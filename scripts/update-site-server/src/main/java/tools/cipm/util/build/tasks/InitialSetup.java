@@ -13,6 +13,11 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.eclipse.jgit.api.Git;
 
+import tools.cipm.util.build.common.MavenWrapperUtil;
+
+import static tools.cipm.util.build.common.ErrorUtil.exitAfterError;
+import static tools.cipm.util.build.common.ErrorUtil.checkForAndExitAfterFailure;
+
 public class InitialSetup implements Runnable {
     public void run() {
         Path root = Paths.get("..", "..");
@@ -22,30 +27,9 @@ public class InitialSetup implements Runnable {
         copyCIPMPipelinePlugins(root);
         
         Path vitruvDir = root.resolve("Vitruv");
-        copyMavenWrapper(root, vitruvDir);
+        MavenWrapperUtil.copyMavenWrapper(root, vitruvDir);
         buildVitruv(vitruvDir);
-        deleteMavenWrapper(vitruvDir);
-    }
-
-    private void exitAfterError(Throwable t) {
-        exitAfterError("", t);
-    }
-
-    private void exitAfterError(String message, Throwable t) {
-        exitAfterError(message, t, 1);
-    }
-
-    private void exitAfterError(String message, Throwable t, int exitCode) {
-        System.out.println(message);
-        t.printStackTrace();
-        System.exit(exitCode);
-    }
-
-    private void checkForAndExitAfterFailure(String message, int code) {
-        if (code != 0) {
-            System.out.println(message);
-            System.exit(code);
-        }
+        MavenWrapperUtil.deleteMavenWrapper(vitruvDir);
     }
 
     private void checkoutGitSubmodules(Path root) {
@@ -106,41 +90,10 @@ public class InitialSetup implements Runnable {
                 .builder()
                 .setWorkingDirectory(root)
                 .get()
-                .execute(CommandLine.parse(getMavenWrapperCommand() + " clean verify"));
+                .execute(CommandLine.parse(MavenWrapperUtil.getMavenWrapperCommand() + " clean verify"));
         } catch (Exception e) {
             exitAfterError("Could not build Vitruv:", e);
         }
         checkForAndExitAfterFailure("Vitruv build was not successful.", executionResult);
-    }
-
-    private static final String MAVEN_WRAPPER_EXECUTABLE = "mvnw";
-    private static final String MAVEN_WRAPPER_EXECUTABLE_WINDOWS = MAVEN_WRAPPER_EXECUTABLE + ".cmd";
-
-    private void copyMavenWrapper(Path root, Path target) {
-        try {
-            FileUtils.copyDirectory(root.resolve(".mvn").toFile(), target.resolve(".mvn").toFile());
-            FileUtils.copyFile(root.resolve(MAVEN_WRAPPER_EXECUTABLE).toFile(), target.resolve(MAVEN_WRAPPER_EXECUTABLE).toFile());
-            FileUtils.copyFile(root.resolve(MAVEN_WRAPPER_EXECUTABLE_WINDOWS).toFile(), target.resolve(MAVEN_WRAPPER_EXECUTABLE_WINDOWS).toFile());
-        } catch (IOException e) {
-            exitAfterError("Could not copy Maven wrapper files:", e);
-        }
-    }
-
-    private String getMavenWrapperCommand() {
-        if (SystemUtils.IS_OS_WINDOWS) {
-            return "cmd.exe " + MAVEN_WRAPPER_EXECUTABLE_WINDOWS;
-        } else {
-            return "bash " + MAVEN_WRAPPER_EXECUTABLE;
-        }
-    }
-
-    private void deleteMavenWrapper(Path root) {
-        try {
-            FileUtils.deleteDirectory(root.resolve(".mvn").toFile());
-            FileUtils.delete(root.resolve(MAVEN_WRAPPER_EXECUTABLE).toFile());
-            FileUtils.delete(root.resolve(MAVEN_WRAPPER_EXECUTABLE_WINDOWS).toFile());
-        } catch (IOException e) {
-            exitAfterError("Could not delete Maven wrapper files:", e);
-        }
     }
 }

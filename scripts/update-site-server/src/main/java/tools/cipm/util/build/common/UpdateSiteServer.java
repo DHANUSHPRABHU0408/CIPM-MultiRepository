@@ -1,4 +1,4 @@
-package tools.cipm.util.build;
+package tools.cipm.util.build.common;
 
 import java.nio.file.Path;
 
