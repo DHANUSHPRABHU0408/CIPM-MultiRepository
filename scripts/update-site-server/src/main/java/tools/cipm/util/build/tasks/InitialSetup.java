@@ -28,7 +28,7 @@ public class InitialSetup implements Runnable {
         
         Path vitruvDir = root.resolve("Vitruv");
         MavenWrapperUtil.copyMavenWrapper(root, vitruvDir);
-        buildVitruv(vitruvDir);
+        MavenWrapperUtil.executeMavenWrapper(vitruvDir, "clean verify");
         MavenWrapperUtil.deleteMavenWrapper(vitruvDir);
     }
 
@@ -81,19 +81,5 @@ public class InitialSetup implements Runnable {
         } catch (IOException e) {
             exitAfterError("Could not copy CIPM-Pipeline plugins:", e);
         }
-    }
-
-    private void buildVitruv(Path root) {
-        int executionResult = 0;
-        try {
-            executionResult = DefaultExecutor
-                .builder()
-                .setWorkingDirectory(root)
-                .get()
-                .execute(CommandLine.parse(MavenWrapperUtil.getMavenWrapperCommand() + " clean verify"));
-        } catch (Exception e) {
-            exitAfterError("Could not build Vitruv:", e);
-        }
-        checkForAndExitAfterFailure("Vitruv build was not successful.", executionResult);
     }
 }

@@ -3,6 +3,8 @@ package tools.cipm.util.build.common;
 import java.io.IOException;
 import java.nio.file.Path;
 
+import org.apache.commons.exec.CommandLine;
+import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 
@@ -28,6 +30,20 @@ public final class MavenWrapperUtil {
         } else {
             return "bash " + MAVEN_WRAPPER_EXECUTABLE;
         }
+    }
+
+    public static void executeMavenWrapper(Path root, String commands) {
+        int executionResult = 0;
+        try {
+            executionResult = DefaultExecutor
+                .builder()
+                .setWorkingDirectory(root)
+                .get()
+                .execute(CommandLine.parse(MavenWrapperUtil.getMavenWrapperCommand() + " " + commands));
+        } catch (Exception e) {
+            ErrorUtil.exitAfterError("Could not execute Maven:", e);
+        }
+        ErrorUtil.checkForAndExitAfterFailure("Maven build was not successful.", executionResult);
     }
 
     public static void deleteMavenWrapper(Path root) {
