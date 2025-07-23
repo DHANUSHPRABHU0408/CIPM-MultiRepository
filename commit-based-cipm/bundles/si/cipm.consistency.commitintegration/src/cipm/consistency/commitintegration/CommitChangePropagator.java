@@ -203,15 +203,19 @@ public class CommitChangePropagator {
 	}
 
 	private boolean preprocess() {
-		File possibleFile = new File(CommitIntegrationSettingsContainer.getSettingsContainer()
-				.getProperty(SettingKeys.PATH_TO_PREPROCESSING_SCRIPT));
-		String absPath = possibleFile.getAbsolutePath();
-		if (possibleFile.exists()) {
-			return ExternalCommandExecutionUtils.runScript(this.repoWrapper.getRootDirectory(), absPath);
-		} else {
-			LOGGER.debug(absPath + " not found.");
+		String scriptLocation = CommitIntegrationSettingsContainer.getSettingsContainer()
+					.getProperty(SettingKeys.PATH_TO_PREPROCESSING_SCRIPT);
+		if (scriptLocation == null || scriptLocation.isBlank()) {
+			return true;
 		}
-		return false;
+		
+		File possibleFile = new File(scriptLocation);
+		if (possibleFile.exists()) {
+			return ExternalCommandExecutionUtils.runScript(this.repoWrapper.getRootDirectory(), possibleFile.getAbsolutePath());
+		} else {
+			LOGGER.debug("Location '" + scriptLocation + "' for preprocessing script not found.");
+			return true;
+		}
 	}
 
 	/**
