@@ -33,10 +33,10 @@ public class JavaFileSystemLayout {
     private Path externalCallTargetPairsFile;
 
     public JavaFileSystemLayout(final Path parent) {
-	    this.localJavaRepo = parent.resolve("..").resolve("..").resolve(JavaFileSystemLayout.localJavaRepoDirName);
+	    this.localJavaRepo = parent.resolve("..").resolve("..").resolve(JavaFileSystemLayout.localJavaRepoDirName).normalize();
 	    this.javaModelFileContainer = parent.resolve(JavaFileSystemLayout.javaModelFileContainerDirName);
 	    this.javaModelFile = parent.resolve(JavaFileSystemLayout.javaModelFileName);
-	    this.instrumentationCopy = parent.resolve("..").resolve("..").resolve(JavaFileSystemLayout.instrumentationDirName);
+	    this.instrumentationCopy = parent.resolve("..").resolve("..").resolve(JavaFileSystemLayout.instrumentationDirName).normalize();
 	    this.moduleConfiguration = parent.resolve(JavaFileSystemLayout.moduleConfigurationFileName);
 	    this.externalCallTargetPairsFile = parent.resolve(JavaFileSystemLayout.externalCallTargetPairsFileName);
     }
