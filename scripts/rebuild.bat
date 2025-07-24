@@ -1,2 +1,2 @@
-call scripts\internal\check-java-version.bat
-call scripts\internal\build-pipeline.bat
+cd update-site-server
+mvnw.cmd package -P pure-build
