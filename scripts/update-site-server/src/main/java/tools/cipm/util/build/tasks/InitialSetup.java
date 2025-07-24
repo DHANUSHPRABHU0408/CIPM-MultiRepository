@@ -27,7 +27,7 @@ public class InitialSetup implements Runnable {
         copyCIPMPipelinePlugins(root);
         
         Path vitruvDir = root.resolve("Vitruv");
-        MavenWrapperUtil.copyMavenWrapper(root, vitruvDir);
+        MavenWrapperUtil.copyMavenWrapper(Paths.get("."), vitruvDir);
         MavenWrapperUtil.executeMavenWrapper(vitruvDir, "clean verify");
         MavenWrapperUtil.deleteMavenWrapper(vitruvDir);
     }

@@ -22,7 +22,7 @@ public class PureCIPMBuild implements Runnable {
 
         Path actualCipmRoot = root.resolve("commit-based-cipm");
         
-        MavenWrapperUtil.copyMavenWrapper(root, actualCipmRoot);
+        MavenWrapperUtil.copyMavenWrapper(Paths.get("."), actualCipmRoot);
         
         MavenWrapperUtil.executeMavenWrapper(actualCipmRoot, "clean verify -P run-one");
         
