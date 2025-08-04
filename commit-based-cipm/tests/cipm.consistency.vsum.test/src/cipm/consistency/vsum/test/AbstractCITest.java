@@ -82,23 +82,23 @@ public abstract class AbstractCITest {
 		if (result) {
 			Resource javaModel = this.controller.getJavaModelResource();
 			Resource instrumentedModel = this.controller.getLastInstrumentedModelResource();
-			Path root = this.controller.getVSUMFacade().getFileLayout().getRootPath();
 			LOGGER.debug("Evaluating the instrumentation.");
 			new InstrumentationEvaluator().evaluateInstrumentationDependently(
 					this.controller.getVSUMFacade().getInstrumentationModel(), javaModel, instrumentedModel,
 					this.controller.getVSUMFacade().getVSUM().getCorrespondenceModel());
-			var resultFile = root.resolve(this.evaluationResultFileNamePrefix + newCommit + ".json");
+			var resultFile = this.controller.getVSUMFacade().getFileLayout().getModelDirPath()
+				.resolve(this.evaluationResultFileNamePrefix + newCommit + ".json");
 			EvaluationDataContainerReaderWriter.write(evalResult, resultFile);
 			LOGGER.debug("Copying the propagated state.");
-			updateBackupRepository(root, "Changes: " + oldCommit + " to " + newCommit + " (" + num + ")", (gitDir) -> {
-				try {
-					FileUtils.copyDirectory(root.resolve("vsum-all").toFile(), gitDir.resolve("vsum-all").toFile());
-					FileUtils.copyFileToDirectory(root.resolve(".commits").toFile(), gitDir.toFile());
-					FileUtils.copyFileToDirectory(resultFile.toFile(), gitDir.toFile());
-				} catch (IOException e) {
-					fail(e);
+			updateBackupRepository(this.controller.getVSUMFacade().getFileLayout().getRootPath(),
+				"Changes: " + oldCommit + " to " + newCommit + " (" + num + ")", (gitDir) -> {
+					try {
+						FileUtils.copyDirectory(this.controller.getVSUMFacade().getFileLayout().getModelDirPath().toFile(), gitDir.toFile());
+					} catch (IOException e) {
+						fail(e);
+					}
 				}
-			});
+			);
 			LOGGER.debug("Finished the evaluation.");
 		}
 		return result;
@@ -119,8 +119,8 @@ public abstract class AbstractCITest {
 		String newCommit = commits[1];
 		
 		LOGGER.debug("Evaluating the propagation " + oldCommit + "->" + newCommit);
-		Path root = this.controller.getVSUMFacade().getFileLayout().getRootPath();
-		var evalResultFile = root.resolve(this.evaluationResultFileNamePrefix + newCommit + ".json");
+		var evalResultFile = this.controller.getVSUMFacade().getFileLayout().getModelDirPath()
+			.resolve(this.evaluationResultFileNamePrefix + newCommit + ".json");
 		EvaluationDataContainer evalResult = EvaluationDataContainerReaderWriter.read(evalResultFile);
 		EvaluationDataContainer.setGlobalContainer(evalResult);
 		Resource javaModel = this.controller.getJavaModelResource();
@@ -151,13 +151,15 @@ public abstract class AbstractCITest {
 				this.controller.getVSUMFacade().getVSUM().getCorrespondenceModel());
 		EvaluationDataContainerReaderWriter.write(evalResult, evalResultFile);
 		
-		updateBackupRepository(root, "Updated evaluation for: " + oldCommit + " to " + newCommit, (Path gitDir) -> {
-			try {
-				FileUtils.copyFileToDirectory(evalResultFile.toFile(), gitDir.toFile());
-			} catch (IOException e) {
-				fail(e);
+		updateBackupRepository(this.controller.getVSUMFacade().getFileLayout().getRootPath(),
+			"Updated evaluation for: " + oldCommit + " to " + newCommit, (Path gitDir) -> {
+				try {
+					FileUtils.copyFileToDirectory(evalResultFile.toFile(), gitDir.toFile());
+				} catch (IOException e) {
+					fail(e);
+				}
 			}
-		});
+		);
 		
 		LOGGER.debug("Finished the evaluation.");
 	}

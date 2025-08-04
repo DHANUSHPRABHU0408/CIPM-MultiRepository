@@ -11,6 +11,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
  */
 @Accessors
 class FileLayout {
+	static final String modelDirName = "model-data";
 	static final String vsumDirName = "vsum";
 	static final String pcmDirName = "pcm";
 	static final String pcmRepositoryFileName = "Repository.repository";
@@ -23,6 +24,7 @@ class FileLayout {
 	static final String javaDirName = "java";
 	static final String commitsFileName = ".commits";
 	Path rootPath;
+	Path modelDirPath;
 	Path vsumPath;
 	Path pcmRepositoryPath;
 	URI pcmRepositoryURI;
@@ -41,9 +43,9 @@ class FileLayout {
 	
 	new(Path rootDir) {
 		rootPath = rootDir;
-		var vsumDir = rootDir.resolve("vsum-all");
-		vsumPath = vsumDir.resolve(vsumDirName);
-		var pcm = vsumDir.resolve(pcmDirName);
+		modelDirPath = rootDir.resolve(modelDirName);
+		vsumPath = modelDirPath.resolve(vsumDirName);
+		var pcm = modelDirPath.resolve(pcmDirName);
 		pcmRepositoryPath = pcm.resolve(pcmRepositoryFileName).toAbsolutePath();
 		pcmRepositoryURI = URI.createFileURI(pcmRepositoryPath.toString());
 		pcmSystemPath = pcm.resolve(pcmSystemFileName).toAbsolutePath();
@@ -54,10 +56,10 @@ class FileLayout {
 		pcmUsageModelURI = URI.createFileURI(pcmUsageModelPath.toString());
 		pcmResourceEnvironmentPath = pcm.resolve(pcmResourceEnvironmentFileName).toAbsolutePath();
 		pcmResourceEnvironmentURI = URI.createFileURI(pcmResourceEnvironmentPath.toString());
-		pcm = vsumDir.resolve(imDirName);
-		imPath = pcm.resolve(imFileName).toAbsolutePath();
+		var imDir = modelDirPath.resolve(imDirName);
+		imPath = imDir.resolve(imFileName).toAbsolutePath();
 		imURI = URI.createFileURI(imPath.toString());
-		javaPath = vsumDir.resolve(javaDirName);
-		commitsPath = rootDir.resolve(commitsFileName);
+		javaPath = modelDirPath.resolve(javaDirName);
+		commitsPath = modelDirPath.resolve(commitsFileName);
 	}
 }
