@@ -31,7 +31,7 @@ routine createOrFindArchitecturalElementBasedOnModule(java::ConcreteClassifier c
 	}
 	action {
 		call {
-			if (!pcmComponent.isPresent) {
+			if (!pcmComponent.isPresent && !module.name.equals("")) {
 				createBasicComponent(module)
 			}
 			addCorrespondenceForPcmComponentAndClassifierBasedOnModule(classifier, module)
