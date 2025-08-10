@@ -84,11 +84,11 @@ public final class ComponentModuleDetector {
 				candidate.getModulesInState(candidate.getStateOfModule(otherMod)).get(otherMod).addAll(v);
 			}
 		});
-		// The configuration is reset to the current state to exclude removed modules.
-		config.clear();
+		
 		updateConfig(config, candidate, ModuleState.MICROSERVICE_COMPONENT);
 		updateConfig(config, candidate, ModuleState.REGULAR_COMPONENT);
 		updateConfig(config, candidate, ModuleState.NO_COMPONENT);
+		
 		// Ask the developer to decide the type of the remaining component candidates.
 		modCandidates = new HashMap<>(candidate.getModulesInState(ModuleState.COMPONENT_CANDIDATE));
 		modCandidates.forEach((k, v) -> {
