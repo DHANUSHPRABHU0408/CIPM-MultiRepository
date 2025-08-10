@@ -87,7 +87,7 @@ public abstract class AbstractCITest {
 					this.controller.getVSUMFacade().getInstrumentationModel(), javaModel, instrumentedModel,
 					this.controller.getVSUMFacade().getVSUM().getCorrespondenceModel());
 			var resultFile = this.controller.getVSUMFacade().getFileLayout().getModelDirPath()
-				.resolve(this.evaluationResultFileNamePrefix + newCommit + ".json");
+				.resolve(this.evaluationResultFileNamePrefix + ".json");
 			EvaluationDataContainerReaderWriter.write(evalResult, resultFile);
 			LOGGER.debug("Copying the propagated state.");
 			updateBackupRepository(this.controller.getVSUMFacade().getFileLayout().getRootPath(),
@@ -120,7 +120,7 @@ public abstract class AbstractCITest {
 		
 		LOGGER.debug("Evaluating the propagation " + oldCommit + "->" + newCommit);
 		var evalResultFile = this.controller.getVSUMFacade().getFileLayout().getModelDirPath()
-			.resolve(this.evaluationResultFileNamePrefix + newCommit + ".json");
+			.resolve(this.evaluationResultFileNamePrefix + ".json");
 		EvaluationDataContainer evalResult = EvaluationDataContainerReaderWriter.read(evalResultFile);
 		EvaluationDataContainer.setGlobalContainer(evalResult);
 		Resource javaModel = this.controller.getJavaModelResource();
