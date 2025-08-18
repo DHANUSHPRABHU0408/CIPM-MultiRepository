@@ -57,6 +57,29 @@ public abstract class AbstractCITest {
 		
 		controller = new CommitIntegrationController(Paths.get(getTestPath()), getRepositoryPath(),
 				Paths.get(getSettingsPath()), getJavaPCMSpecification());
+		copyConfigurations();
+	}
+	
+	private void copyConfigurations() {
+		var configDir = Paths.get(this.getSettingsPath()).getParent();
+		
+		var extCallTargetsFile = this.controller.getCommitChangePropagator().getJavaFileSystemLayout().getExternalCallTargetPairsFile();
+		var originalFile = configDir.resolve(extCallTargetsFile.getFileName());
+		if (Files.exists(originalFile)) {
+			try {
+				FileUtils.copyFile(originalFile.toFile(), extCallTargetsFile.toFile());
+			} catch (IOException e) {
+			}
+		}
+		
+		var moduleConfigFile = this.controller.getCommitChangePropagator().getJavaFileSystemLayout().getModuleConfiguration();
+		originalFile = configDir.resolve(moduleConfigFile.getFileName());
+		if (Files.exists(originalFile)) {
+			try {
+				FileUtils.copyFile(originalFile.toFile(), moduleConfigFile.toFile());
+			} catch (IOException e) {
+			}
+		}
 	}
 
 	/**
