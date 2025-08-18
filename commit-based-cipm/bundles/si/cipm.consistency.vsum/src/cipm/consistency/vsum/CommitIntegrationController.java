@@ -87,8 +87,19 @@ public class CommitIntegrationController {
 			throws IOException, GitAPIException {
 		var parent = this.facade.getFileLayout().getCommitsPath().toAbsolutePath().getParent();
 		if (Files.notExists(parent)) {
+			if (oldCommit != null) {
+				throw new IllegalStateException("Cannot propagate changes between two commits because no initial commit was propagated.");
+			}
 			Files.createDirectories(parent);
 		}
+		
+		var previousCommits = this.loadCommits();
+		if (previousCommits.length == 0 && oldCommit != null
+				|| previousCommits.length == 1 && !previousCommits[0].equals(newCommit)
+				|| previousCommits.length == 2 && !previousCommits[1].equals(oldCommit)) {
+			throw new IllegalStateException("Will not propagate changes because old commits does not match last propagated commit.");
+		}
+		
 		try (BufferedWriter writer = Files.newBufferedWriter(this.facade.getFileLayout().getCommitsPath())) {
 			if (oldCommit != null) {
 				writer.write(oldCommit + "\n");
