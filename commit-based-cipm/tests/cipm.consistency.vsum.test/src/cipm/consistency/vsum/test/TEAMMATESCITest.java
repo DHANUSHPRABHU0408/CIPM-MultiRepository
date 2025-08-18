@@ -17,7 +17,7 @@ public class TEAMMATESCITest extends AbstractCITest {
 	private static final String COMMIT_TAG_V_8_0_0_RC_0 = "648425746bb9434051647c8266dfab50a8f2d6a3";
 	private static final String[] COMMIT_HASHES = {
 		COMMIT_TAG_V_8_0_0_RC_0,
-		"48b67bae03babf5a5e578aefce47f0285e8de8b4", 
+		"48b67bae03babf5a5e578aefce47f0285e8de8b4",
 		"83f518e279807dc7eb7023d008a4d1ab290fefee",
 		"f33d0bcd5843678b832efd8ee2963e72a95ecfc9",
 		"ce4463a8741840fd25a41b14801eab9193c7ed18"

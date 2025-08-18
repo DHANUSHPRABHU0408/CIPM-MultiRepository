@@ -185,7 +185,7 @@ public class CommitChangePropagator {
 		String oldId = start != null ? start.getId().getName() : null;
 		cs.setOldCommit(oldId != null ? oldId : "");
 		cs.setNewCommit(commitId);
-		cs.setNumberCommits(repoWrapper.getAllCommitsBetweenTwoCommits(oldId, commitId).size() + 1);
+		cs.setNumberCommits(repoWrapper.getAllCommitsBetweenTwoCommits(oldId, commitId).size());
 		LOGGER.debug("Cleaning the repository.");
 		repoWrapper.performCompleteClean();
 		LOGGER.debug("Checkout of " + commitId);
