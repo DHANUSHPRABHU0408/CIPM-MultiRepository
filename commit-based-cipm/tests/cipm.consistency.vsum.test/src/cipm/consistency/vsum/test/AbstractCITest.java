@@ -34,6 +34,7 @@ public abstract class AbstractCITest {
 	private static final Logger LOGGER = Logger.getLogger("cipm." + AbstractCITest.class.getSimpleName());
 	private final String evaluationResultFileNamePrefix = "eval_";
 	protected CommitIntegrationController controller;
+	protected boolean copyConfigurations = true;
 
 	@BeforeEach
 	public void setUp() throws Exception {
@@ -61,6 +62,10 @@ public abstract class AbstractCITest {
 	}
 	
 	private void copyConfigurations() {
+		if (!this.copyConfigurations) {
+			return;
+		}
+		
 		var configDir = Paths.get(this.getSettingsPath()).getParent();
 		
 		var extCallTargetsFile = this.controller.getCommitChangePropagator().getJavaFileSystemLayout().getExternalCallTargetPairsFile();
