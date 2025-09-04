@@ -1,5 +1,6 @@
 package cipm.consistency.commitintegration.detection;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -15,6 +16,15 @@ public class BuildFileBasedComponentDetectionStrategy implements ComponentDetect
 	private static final String MAVEN_POM_FILE_NAME = "pom.xml";
 	private static final String GRADLE_BUILD_FILE_NAME = "build.gradle";
 	private static final String DOCKERFILE_FILE_NAME = "Dockerfile";
+	private boolean checkForDockerfiles;
+	
+	public BuildFileBasedComponentDetectionStrategy() {
+		this(true);
+	}
+	
+	public BuildFileBasedComponentDetectionStrategy(boolean checkForDockerfiles) {
+		this.checkForDockerfiles = checkForDockerfiles;
+	}
 
 	@Override
 	public void detectComponent(Resource res, Path file, Path container, ModuleCandidates candidate) {
@@ -26,9 +36,12 @@ public class BuildFileBasedComponentDetectionStrategy implements ComponentDetect
 					|| checkSiblingExistence(parent, GRADLE_BUILD_FILE_NAME);
 			boolean dockerFileExistence = checkSiblingExistence(parent, DOCKERFILE_FILE_NAME);
 			if (buildFileExistence) {
-				String modName = parent.getParent().getFileName().toString();
-				if (dockerFileExistence) {
+				var relative = container.relativize(parent.getParent());
+				String modName = relative.toString().replaceAll("/", ".");
+				if (dockerFileExistence && this.checkForDockerfiles) {
 					candidate.addModuleClassifier(ModuleState.MICROSERVICE_COMPONENT, modName, res);
+				} else if (!this.checkForDockerfiles) {
+					candidate.addModuleClassifier(ModuleState.REGULAR_COMPONENT, modName, res);
 				} else {
 					candidate.addModuleClassifier(ModuleState.COMPONENT_CANDIDATE, modName, res);
 				}
