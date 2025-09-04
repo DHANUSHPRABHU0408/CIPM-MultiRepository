@@ -57,7 +57,6 @@ public class CommitIntegrationController {
 		facade = new VSUMFacade(rootPath, javaPCMSpecification);
 		prop = new CommitChangePropagator(repositoryPath,
 				facade.getFileLayout().getJavaPath().toString(), facade.getVSUM());
-		prop.initialize();
 	}
 	
 	/**

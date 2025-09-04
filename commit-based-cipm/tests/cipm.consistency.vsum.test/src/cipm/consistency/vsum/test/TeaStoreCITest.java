@@ -33,7 +33,7 @@ public class TeaStoreCITest extends AbstractCITest {
 	private static final String COMMIT_TAG_1_3 = "745469e55fad8a801a92b0be96dc009acbe7e3fb";
 	private static final String COMMIT_TAG_1_3_1 = "de69e957597d20d4be17fc7db2a0aa2fb3a414f7";
 	private String interval = "";
-
+	
 	@Override
 	protected String getTestPath() {
 		return "target" + File.separator + "TeaStoreTest";
