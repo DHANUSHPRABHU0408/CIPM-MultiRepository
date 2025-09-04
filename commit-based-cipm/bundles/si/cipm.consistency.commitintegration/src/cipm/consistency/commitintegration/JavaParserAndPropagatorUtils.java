@@ -1,6 +1,8 @@
 package cipm.consistency.commitintegration;
 
+import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -12,6 +14,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.emftext.language.java.JavaClasspath;
 import org.emftext.language.java.containers.JavaRoot;
+import org.emftext.language.java.references.StringReference;
 import org.emftext.language.java.types.PrimitiveType;
 
 import cipm.consistency.commitintegration.detection.BuildFileBasedComponentDetectionStrategy;
@@ -66,11 +69,17 @@ public final class JavaParserAndPropagatorUtils {
 		
 		if (!config.resolveAll) {
 			// Wrap all primitive types to ensure that their wrapper classes are loaded.
+			// Remove \u0000 from StringReferences since they are illegal XML characters.
 			for (var resource : new ArrayList<>(resourceSet.getResources())) {
 				resource.getAllContents().forEachRemaining(obj -> {
 					if (obj instanceof PrimitiveType) {
 						var type = (PrimitiveType) obj;
 						type.wrapPrimitiveType();
+					} else if (obj instanceof StringReference) {
+						var stringRef = (StringReference) obj;
+						if (stringRef.getValue().contains("\u0000")) {
+							stringRef.setValue(stringRef.getValue().replace("\u0000", ""));
+						}
 					}
 				});
 			}
@@ -93,6 +102,15 @@ public final class JavaParserAndPropagatorUtils {
 		for (Resource r : new ArrayList<>(resourceSet.getResources())) {
 			all.getContents().addAll(r.getContents());
 		}
+		
+		var oldUri = all.getURI();
+		var newUri = URI.createFileURI(Paths.get(oldUri.toFileString()).resolveSibling("mbp.javaxmi").toString());
+		all.setURI(newUri);
+		try {
+			all.save(null);
+		} catch (IOException e) {
+		}
+		all.setURI(oldUri);
 		return all;
 	}
 	
