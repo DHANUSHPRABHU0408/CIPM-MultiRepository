@@ -143,7 +143,7 @@ class JavaStateBasedChangeResolutionStrategy implements StateBasedChangeResoluti
 			changeRecorder.addToRecording(resource)
 			function.apply()
 			val result = changeRecorder.endRecording
-			logger.debug("Recorded " + result.EChanges.size + " changes for " + resource)
+			logger.info("Recorded " + result.EChanges.size + " changes for " + resource)
 			EvaluationDataContainer.globalContainer.changeStatistic.numberVitruvChanges = result.EChanges.size
 			return result
 		}
@@ -157,10 +157,11 @@ class JavaStateBasedChangeResolutionStrategy implements StateBasedChangeResoluti
 		val postProcessor = new JavaChangedMethodDetectorDiffPostProcessor()
 		val changes = JavaModelComparator.compareJavaModels(newState, currentState,
 				newResources, currentResources, postProcessor).differences
+		logger.info("EMFCompare-detected differences: " + changes.size);
 		// Replay the EMF compare differences.
 		val mergerRegistry = IMerger.RegistryImpl.createStandaloneInstance()
 		val merger = new BatchMerger(mergerRegistry)
-		merger.copyAllLeftToRight(changes, new BasicMonitor)
+		merger.copyAllLeftToRight(changes, new BasicMonitor())
 		postProcessor.getChangedMethods.forEach[
 			val oldName = it.name
 			it.name = ""

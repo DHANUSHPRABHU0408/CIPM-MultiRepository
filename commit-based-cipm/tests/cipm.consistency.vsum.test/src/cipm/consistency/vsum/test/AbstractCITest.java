@@ -46,6 +46,7 @@ public abstract class AbstractCITest {
 		logger.removeAllAppenders();
 		ConsoleAppender ap = new ConsoleAppender(new PatternLayout("[%d{DATE}] %-5p: %c - %m%n"),
 				ConsoleAppender.SYSTEM_OUT);
+		logger.setLevel(Level.INFO);
 		logger.addAppender(ap);
 		Thread.sleep(5000);
 		
