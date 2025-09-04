@@ -190,6 +190,10 @@ public class CommitChangePropagator {
 		repoWrapper.performCompleteClean();
 		LOGGER.debug("Checkout of " + commitId);
 		repoWrapper.checkout(commitId);
+		return this.propagateCurrentState();
+	}
+	
+	public boolean propagateCurrentState() {
 		boolean preprocessResult = preprocess();
 		if (!preprocessResult) {
 			LOGGER.debug("The preprocessing failed. Aborting.");
@@ -198,7 +202,7 @@ public class CommitChangePropagator {
 		LOGGER.debug("Delegating the change propagation to the JavaParserAndPropagatorUtility.");
 		JavaParserAndPropagatorUtils.parseAndPropagateJavaCode(repoWrapper.getRootDirectory().toPath(),
 				fileLayout.getJavaModelFile(), vsum, fileLayout.getModuleConfiguration());
-		LOGGER.debug("Finished the propagation of " + commitId);
+		LOGGER.debug("Finished the propagation.");
 		return true;
 	}
 
@@ -246,7 +250,9 @@ public class CommitChangePropagator {
 	 */
 	public void shutdown() {
 		LOGGER.debug("Shutting down.");
-		repoWrapper.closeRepository();
+		if (repoWrapper.isInitialized()) {
+			repoWrapper.closeRepository();
+		}
 	}
 
 	public GitRepositoryWrapper getWrapper() {
