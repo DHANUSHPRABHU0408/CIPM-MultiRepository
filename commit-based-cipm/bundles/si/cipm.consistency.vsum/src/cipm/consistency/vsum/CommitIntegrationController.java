@@ -97,14 +97,9 @@ public class CommitIntegrationController {
 		if (previousCommits.length == 0 && oldCommit != null
 				|| previousCommits.length == 1 && !previousCommits[0].equals(newCommit)
 				|| previousCommits.length == 2 && !previousCommits[1].equals(oldCommit)) {
-			throw new IllegalStateException("Will not propagate changes because old commits does not match last propagated commit.");
-		}
-		
-		try (BufferedWriter writer = Files.newBufferedWriter(this.facade.getFileLayout().getCommitsPath())) {
-			if (oldCommit != null) {
-				writer.write(oldCommit + "\n");
-			}
-			writer.write(newCommit + "\n");
+			throw new IllegalStateException("Will not propagate changes because old commits does not match last propagated commit ("
+				+ oldCommit + " - " + newCommit + " != " + previousCommits[0] + " - "
+				+ (previousCommits.length == 1 ? "" : previousCommits[1]) + ").");
 		}
 		
 		long overallTimer = System.currentTimeMillis();
@@ -127,6 +122,13 @@ public class CommitIntegrationController {
 				.setChangePropagationTime(fineTimer);
 		
 		if (result) {
+			
+			try (BufferedWriter writer = Files.newBufferedWriter(this.facade.getFileLayout().getCommitsPath())) {
+				if (oldCommit != null) {
+					writer.write(oldCommit + "\n");
+				}
+				writer.write(newCommit + "\n");
+			}
 			@SuppressWarnings("restriction")
 			ExternalCallEmptyTargetFiller filler = new ExternalCallEmptyTargetFiller(
 					facade.getVSUM().getCorrespondenceModel(),
