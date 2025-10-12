@@ -208,14 +208,7 @@ public class CommitChangePropagator {
 		if (scriptLocation == null || scriptLocation.isBlank()) {
 			return true;
 		}
-		
-		File possibleFile = new File(scriptLocation);
-		if (possibleFile.exists()) {
-			return ExternalCommandExecutionUtils.runScript(this.repoWrapper.getRootDirectory(), possibleFile.getAbsolutePath());
-		} else {
-			LOGGER.debug("Location '" + scriptLocation + "' for preprocessing script not found.");
-			return true;
-		}
+		return ExternalCommandExecutionUtils.runScript(this.repoWrapper.getRootDirectory(), scriptLocation);
 	}
 
 	/**

@@ -1,7 +1,6 @@
 package cipm.consistency.vsum;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -231,7 +230,6 @@ public class CommitIntegrationController {
 		LOGGER.debug("Compiling the instrumented code.");
 		String compileScript = CommitIntegrationSettingsContainer.getSettingsContainer()
 			.getProperty(SettingKeys.PATH_TO_COMPILATION_SCRIPT);
-		compileScript = new File(compileScript).getAbsolutePath();
 		return ExternalCommandExecutionUtils.runScript(insCode.toFile(), compileScript);
 	}
 	
