@@ -4,7 +4,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 
 import cipm.consistency.commitintegration.JavaParserAndPropagatorUtils;
 import cipm.consistency.commitintegration.diff.util.ComparisonBasedJaccardCoefficientCalculator;
@@ -33,5 +36,11 @@ public class JavaModelEvaluator {
 		currentEvalResult.setUnionCardinality(jc.getUnionCardinality());
 		currentEvalResult.setIntersectionCardinality(jc.getIntersectionCardinality());
 		currentEvalResult.setJc(jc.getJC());
+		
+		ResourceSet set = new ResourceSetImpl();
+		Resource resource = set.createResource(URI.createURI("model://Comparison.comparison"));
+		resource.getContents().add(result);
+		resource.unload();
+		parsed.unload();
 	}
 }

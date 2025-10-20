@@ -211,6 +211,7 @@ public abstract class AbstractCITest {
 	@AfterEach
 	public void tearDown() throws Exception {
 		controller.shutdown();
+		System.gc();
 	}
 
 	/**

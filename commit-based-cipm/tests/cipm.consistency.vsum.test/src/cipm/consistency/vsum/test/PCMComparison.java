@@ -29,11 +29,19 @@ public class PCMComparison {
 		ResourceSet set = new ResourceSetImpl();
 		Resource res1 = set.getResource(URI.createFileURI(path1), true);
 		Resource res2 = set.getResource(URI.createFileURI(path2), true);
-		return compareRepositories((Repository) res1.getContents().get(0), (Repository) res2.getContents().get(0));
+		var result = compareRepositories((Repository) res1.getContents().get(0), (Repository) res2.getContents().get(0));
+		res1.unload();
+		res2.unload();
+		return result;
 	}
 	
 	public static JaccardCoefficientResult compareRepositories(Repository repo1, Repository repo2) {
 		var comp = PCMModelComparator.compareRepositoryModels(repo1, repo2);
-		return ComparisonBasedJaccardCoefficientCalculator.calculateJaccardCoefficient(comp);
+		var result = ComparisonBasedJaccardCoefficientCalculator.calculateJaccardCoefficient(comp);
+		var set = new ResourceSetImpl();
+		var resource = set.createResource(URI.createURI("model://Comparison.comparison"));
+		resource.getContents().add(comp);
+		resource.unload();
+		return result;
 	}
 }
