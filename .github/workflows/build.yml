@@ -5,11 +5,11 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-24.04, windows-2025]
+        os: [ubuntu-24.04, windows-2025, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Enable Long Paths in Git (Linux)
-        if: runner.os == 'Linux'
+      - name: Enable Long Paths in Git (Non-Windows)
+        if: runner.os != 'Windows'
         run: sudo git config --system core.longpaths true
       - name: Enable Long Paths in Git (Windows)
         if: runner.os == 'Windows'
@@ -24,8 +24,8 @@ jobs:
           distribution: 'temurin'
           java-version: 11
           cache: 'maven'
-      - name: Build (Linux)
-        if: runner.os == 'Linux'
+      - name: Build (Non-Windows)
+        if: runner.os != 'Windows'
         run: cd scripts && ./build
       - name: Build (Windows)
         if: runner.os == 'Windows'
