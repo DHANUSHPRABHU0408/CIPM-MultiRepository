@@ -60,7 +60,7 @@ public class InitialSetup implements Runnable {
 
     private String getGradleWrapperCommand() {
         if (SystemUtils.IS_OS_WINDOWS) {
-            return "cmd.exe gradlew.bat";
+            return "cmd.exe /c gradlew.bat";
         } else {
             return "bash gradlew";
         }

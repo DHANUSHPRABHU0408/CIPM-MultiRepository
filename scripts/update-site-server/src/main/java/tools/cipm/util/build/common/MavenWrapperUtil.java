@@ -26,7 +26,7 @@ public final class MavenWrapperUtil {
 
     public static String getMavenWrapperCommand() {
         if (SystemUtils.IS_OS_WINDOWS) {
-            return "cmd.exe " + MAVEN_WRAPPER_EXECUTABLE_WINDOWS;
+            return "cmd.exe /c " + MAVEN_WRAPPER_EXECUTABLE_WINDOWS;
         } else {
             return "bash " + MAVEN_WRAPPER_EXECUTABLE;
         }
