@@ -4,8 +4,11 @@ import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.emftext.language.java.members.Method;
 import org.emftext.language.java.statements.Return;
@@ -59,6 +62,7 @@ public class InstrumentationEvaluator {
 		insEvalData.setExpectedLowerStatementDifferenceCount(countExpectedStatements(im, cm, true));
 		insEvalData.setExpectedUpperStatementDifferenceCount(countExpectedStatements(im, cm, false));
 		insEvalData.setStatementDifferenceCount(instrumStatements - javaStatements);
+		instrumentedModel.unload();
 	}
 	
 	/**
@@ -92,7 +96,7 @@ public class InstrumentationEvaluator {
 			return;
 		}
 		var postProcessor = new JavaChangedMethodDetectorDiffPostProcessor();
-		JavaModelComparator.compareJavaModels(reloadedModel, javaModel,
+		var comparison = JavaModelComparator.compareJavaModels(reloadedModel, javaModel,
 				null, null, postProcessor);
 		Set<Method> changed = new HashSet<>(postProcessor.getChangedMethods());
 		insEvalData.setNumberChangedMethods(changed.size());
@@ -106,6 +110,12 @@ public class InstrumentationEvaluator {
 		for (Method m : changed) {
 			insEvalData.getUnmatchedChangedMethods().add(convertToString(m));
 		}
+		
+		ResourceSet set = new ResourceSetImpl();
+		Resource compResource = set.createResource(URI.createURI("model://Comparison.comparison"));
+		compResource.getContents().add(comparison);
+		compResource.unload();
+		reloadedModel.unload();
 	}
 	
 	private int countStatements(Resource model) {

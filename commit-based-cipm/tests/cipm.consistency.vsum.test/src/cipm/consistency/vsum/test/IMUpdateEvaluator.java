@@ -40,10 +40,14 @@ public class IMUpdateEvaluator {
 	public void evaluateIMUpdate(Repository repo, InstrumentationModel im, ImUpdateEvalData evalData, String rootDir) {
 		currentEvalResult = evalData;
 		
+		currentEvalResult.setNumberAllIP(0);
 		for (TreeIterator<EObject> iter = im.eAllContents(); iter.hasNext(); iter.next()) {
 			currentEvalResult.setNumberIP(currentEvalResult.getNumberIP() + 1);
 		}
 		
+		currentEvalResult.setNumberMatchedIP(0);
+		currentEvalResult.setNumberSIP(0);
+		currentEvalResult.setNumberActivatedAIP(0);
 		for (RepositoryComponent com : repo.getComponents__Repository()) {
 			if (com instanceof BasicComponent) {
 				BasicComponent basicCom = (BasicComponent) com;

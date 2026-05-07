@@ -28,7 +28,7 @@ routine createOrFindArchitecturalElementBasedOnModule(java::ConcreteClassifier c
 		val pcmComponent = retrieve optional pcm::RepositoryComponent corresponding to module
 	}
 	update {
-		if (!pcmComponent.isPresent) {
+		if (!pcmComponent.isPresent && !module.name.equals("")) {
 			createBasicComponent(module)
 		}
 		addCorrespondenceForPcmComponentAndClassifierBasedOnModule(classifier, module)

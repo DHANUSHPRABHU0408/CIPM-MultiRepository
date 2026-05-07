@@ -34,6 +34,7 @@ public abstract class AbstractCITest {
 	private static final Logger LOGGER = Logger.getLogger("cipm." + AbstractCITest.class.getSimpleName());
 	private final String evaluationResultFileNamePrefix = "eval_";
 	protected CommitIntegrationController controller;
+	protected boolean copyConfigurations = true;
 
 	@BeforeEach
 	public void setUp() throws Exception {
@@ -57,6 +58,33 @@ public abstract class AbstractCITest {
 		
 		controller = new CommitIntegrationController(Paths.get(getTestPath()), getRepositoryPath(),
 				Paths.get(getSettingsPath()), getJavaPCMSpecification());
+		copyConfigurations();
+	}
+	
+	private void copyConfigurations() {
+		if (!this.copyConfigurations) {
+			return;
+		}
+		
+		var configDir = Paths.get(this.getSettingsPath()).getParent();
+		
+		var extCallTargetsFile = this.controller.getCommitChangePropagator().getJavaFileSystemLayout().getExternalCallTargetPairsFile();
+		var originalFile = configDir.resolve(extCallTargetsFile.getFileName());
+		if (Files.exists(originalFile)) {
+			try {
+				FileUtils.copyFile(originalFile.toFile(), extCallTargetsFile.toFile());
+			} catch (IOException e) {
+			}
+		}
+		
+		var moduleConfigFile = this.controller.getCommitChangePropagator().getJavaFileSystemLayout().getModuleConfiguration();
+		originalFile = configDir.resolve(moduleConfigFile.getFileName());
+		if (Files.exists(originalFile)) {
+			try {
+				FileUtils.copyFile(originalFile.toFile(), moduleConfigFile.toFile());
+			} catch (IOException e) {
+			}
+		}
 	}
 
 	/**
@@ -82,23 +110,23 @@ public abstract class AbstractCITest {
 		if (result) {
 			Resource javaModel = this.controller.getJavaModelResource();
 			Resource instrumentedModel = this.controller.getLastInstrumentedModelResource();
-			Path root = this.controller.getVSUMFacade().getFileLayout().getRootPath();
 			LOGGER.debug("Evaluating the instrumentation.");
 			new InstrumentationEvaluator().evaluateInstrumentationDependently(
 					this.controller.getVSUMFacade().getInstrumentationModel(), javaModel, instrumentedModel,
 					this.controller.getVSUMFacade().getVSUM().getCorrespondenceModel());
-			var resultFile = root.resolve(this.evaluationResultFileNamePrefix + newCommit + ".json");
+			var resultFile = this.controller.getVSUMFacade().getFileLayout().getModelDirPath()
+				.resolve(this.evaluationResultFileNamePrefix + ".json");
 			EvaluationDataContainerReaderWriter.write(evalResult, resultFile);
 			LOGGER.debug("Copying the propagated state.");
-			updateBackupRepository(root, "Changes: " + oldCommit + " to " + newCommit + " (" + num + ")", (gitDir) -> {
-				try {
-					FileUtils.copyDirectory(root.resolve("vsum-all").toFile(), gitDir.resolve("vsum-all").toFile());
-					FileUtils.copyFileToDirectory(root.resolve(".commits").toFile(), gitDir.toFile());
-					FileUtils.copyFileToDirectory(resultFile.toFile(), gitDir.toFile());
-				} catch (IOException e) {
-					fail(e);
+			updateBackupRepository(this.controller.getVSUMFacade().getFileLayout().getRootPath(),
+				"Changes: " + oldCommit + " to " + newCommit + " (" + num + ")", (gitDir) -> {
+					try {
+						FileUtils.copyDirectory(this.controller.getVSUMFacade().getFileLayout().getModelDirPath().toFile(), gitDir.toFile());
+					} catch (IOException e) {
+						fail(e);
+					}
 				}
-			});
+			);
 			LOGGER.debug("Finished the evaluation.");
 		}
 		return result;
@@ -119,8 +147,8 @@ public abstract class AbstractCITest {
 		String newCommit = commits[1];
 		
 		LOGGER.debug("Evaluating the propagation " + oldCommit + "->" + newCommit);
-		Path root = this.controller.getVSUMFacade().getFileLayout().getRootPath();
-		var evalResultFile = root.resolve(this.evaluationResultFileNamePrefix + newCommit + ".json");
+		var evalResultFile = this.controller.getVSUMFacade().getFileLayout().getModelDirPath()
+			.resolve(this.evaluationResultFileNamePrefix + ".json");
 		EvaluationDataContainer evalResult = EvaluationDataContainerReaderWriter.read(evalResultFile);
 		EvaluationDataContainer.setGlobalContainer(evalResult);
 		Resource javaModel = this.controller.getJavaModelResource();
@@ -151,13 +179,15 @@ public abstract class AbstractCITest {
 				this.controller.getVSUMFacade().getVSUM().getCorrespondenceModel());
 		EvaluationDataContainerReaderWriter.write(evalResult, evalResultFile);
 		
-		updateBackupRepository(root, "Updated evaluation for: " + oldCommit + " to " + newCommit, (Path gitDir) -> {
-			try {
-				FileUtils.copyFileToDirectory(evalResultFile.toFile(), gitDir.toFile());
-			} catch (IOException e) {
-				fail(e);
+		updateBackupRepository(this.controller.getVSUMFacade().getFileLayout().getRootPath(),
+			"Updated evaluation for: " + oldCommit + " to " + newCommit, (Path gitDir) -> {
+				try {
+					FileUtils.copyFileToDirectory(evalResultFile.toFile(), gitDir.toFile());
+				} catch (IOException e) {
+					fail(e);
+				}
 			}
-		});
+		);
 		
 		LOGGER.debug("Finished the evaluation.");
 	}
@@ -181,6 +211,7 @@ public abstract class AbstractCITest {
 	@AfterEach
 	public void tearDown() throws Exception {
 		controller.shutdown();
+		System.gc();
 	}
 
 	/**

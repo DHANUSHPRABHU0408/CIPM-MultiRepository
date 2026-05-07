@@ -24,6 +24,7 @@ public class RepositoryModelEvaluator {
 		result.setIntersectionCardinality(jc.getIntersectionCardinality());
 		result.setUnionCardinality(jc.getUnionCardinality());
 		result.setJc(jc.getJC());
+		referenceModel.eResource().unload();
 	}
 	
 	private Repository loadRepository(Path repoPath) {

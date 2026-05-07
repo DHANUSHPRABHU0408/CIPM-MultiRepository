@@ -314,19 +314,18 @@ public class GitRepositoryWrapper {
         CanonicalTreeParser newTreeParser = new CanonicalTreeParser();
         newTreeParser.reset(treeReader, newTreeId);
 
+        var cs = EvaluationDataContainer.getGlobalContainer().getChangeStatistic();
+		cs.setNumberAddedLines(0);
+		cs.setNumberRemovedLines(0);
         OutputStream outputStream = NullOutputStream.INSTANCE;
         DiffFormatter df = new DiffFormatter(outputStream) {
             @Override
             protected void writeAddedLine(RawText text, int line) {
-                var cs = EvaluationDataContainer.get()
-                    .getChangeStatistic();
                 cs.setNumberAddedLines(cs.getNumberAddedLines() + 1);
             }
 
             @Override
             protected void writeRemovedLine(RawText text, int line) {
-                var cs = EvaluationDataContainer.get()
-                    .getChangeStatistic();
                 cs.setNumberRemovedLines(cs.getNumberRemovedLines() + 1);
             }
         };
@@ -352,9 +351,7 @@ public class GitRepositoryWrapper {
         }
         df.close();
 
-        EvaluationDataContainer.get()
-            .getChangeStatistic()
-            .setNumberChangedJavaFiles(diffs.size());
+        cs.setNumberChangedJavaFiles(diffs.size());
 
         return diffs;
     }

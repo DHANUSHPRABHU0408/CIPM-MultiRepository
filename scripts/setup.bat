@@ -1,1 +1,2 @@
-call scripts\internal\initial-setup.bat
+cd update-site-server
+mvnw.cmd package -P initial-setup

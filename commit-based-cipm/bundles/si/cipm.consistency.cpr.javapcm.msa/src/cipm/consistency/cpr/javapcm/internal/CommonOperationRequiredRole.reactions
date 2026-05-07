@@ -42,9 +42,10 @@ routine createOrFindRequiredRoleForImport(java::Import importSt, java::ConcreteC
 		val containingCom = retrieve pcm::RepositoryComponent corresponding to importingClassifier
 	}
 	update {
-		if (opInterfaceCom.empty
+		if ((opInterfaceCom.empty
 			|| opInterfaceCom.get !== containingCom
 			|| importSt.classifier.annotationInstances.findFirst[it.annotation.name.equals("FeignClient")] !== null
+			) && !opInterface.entityName.equals("HttpServlet")
 		) {
 			var reqRole = findRequiredRole(containingCom, opInterface)
 			if (reqRole !== null) {

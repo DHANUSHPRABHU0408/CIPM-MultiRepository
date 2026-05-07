@@ -21,6 +21,7 @@ import cipm.consistency.tools.evaluation.data.EvaluationDataContainer
 import cipm.consistency.commitintegration.diff.util.JavaChangedMethodDetectorDiffPostProcessor
 import tools.vitruv.framework.views.changederivation.StateBasedChangeResolutionStrategy
 import tools.vitruv.change.composite.recording.ChangeRecorder
+import org.eclipse.emf.common.util.URI
 
 /**
  * This strategy for diff based state changes of Java models uses EMFCompare to resolve a 
@@ -45,12 +46,14 @@ class JavaStateBasedChangeResolutionStrategy implements StateBasedChangeResoluti
 		oldState.checkNoProxies("old state")
 		val monitoredResourceSet = new ResourceSetImpl()
 		val currentStateCopy = oldState.copyInto(monitoredResourceSet)
-		return currentStateCopy.record(monitoredResourceSet, [
+		val recordedChanges = currentStateCopy.record(monitoredResourceSet, [
 			if (oldState.URI != newState.URI) {
 				currentStateCopy.URI = newState.URI
 			}
 			compareStatesAndReplayChanges(newState, currentStateCopy, null, null)
 		])
+		currentStateCopy.unload()
+		return recordedChanges
 	}
 
 	override getChangeSequenceForCreated(Resource newState) {
@@ -60,9 +63,11 @@ class JavaStateBasedChangeResolutionStrategy implements StateBasedChangeResoluti
 		// Thus, we create the resource and then monitor the re-insertion of the elements
 		val monitoredResourceSet = new ResourceSetImpl()
 		val newResource = monitoredResourceSet.createResource(newState.URI)
-		return newResource.record(monitoredResourceSet, [
+		val recordedChanges = newResource.record(monitoredResourceSet, [
 			compareStatesAndReplayChanges(newState, newResource, null, null)
 		])
+		newResource.unload()
+		return recordedChanges
 	}
 	
 	private def copyResourceContent(Resource toCopy, (Collection<EObject>)=>Collection<EObject> copyFunction) {
@@ -93,9 +98,11 @@ class JavaStateBasedChangeResolutionStrategy implements StateBasedChangeResoluti
 		resources.forEach[
 			targetResources.add(targetSet.createResource(it.URI))
 		]
-		return targetSet.record(targetSet, [
+		val recordedChanges = targetSet.record(targetSet, [
 			compareStatesAndReplayChanges(set, targetSet, resources, targetResources)
 		])
+		targetResources.forEach[it.unload()]
+		return recordedChanges
 	}
 	
 	/**
@@ -121,9 +128,11 @@ class JavaStateBasedChangeResolutionStrategy implements StateBasedChangeResoluti
 			]))
 		]
 		copier.copyReferences
-		return monitoredResourceSet.record(monitoredResourceSet, [
+		val recordedChanges = monitoredResourceSet.record(monitoredResourceSet, [
 			compareStatesAndReplayChanges(sourceSet, monitoredResourceSet, sourceResources, copies)
 		])
+		copies.forEach[it.unload()]
+		return recordedChanges
 	}
 
 	override getChangeSequenceForDeleted(Resource oldState) {
@@ -132,9 +141,11 @@ class JavaStateBasedChangeResolutionStrategy implements StateBasedChangeResoluti
 		// Setup resolver and copy state:
 		val monitoredResourceSet = new ResourceSetImpl()
 		val currentStateCopy = monitoredResourceSet.createResource(oldState.URI)
-		return currentStateCopy.record(monitoredResourceSet, [
+		val recordedChanges = currentStateCopy.record(monitoredResourceSet, [
 			compareStatesAndReplayChanges(currentStateCopy, oldState, null, null)
 		])
+		currentStateCopy.unload()
+		return recordedChanges
 	}
 
 	private def <T extends Notifier> record(T resource, ResourceSet resourceSet, () => void function) {
@@ -156,16 +167,20 @@ class JavaStateBasedChangeResolutionStrategy implements StateBasedChangeResoluti
 			List<Resource> newResources, List<Resource> currentResources) {
 		val postProcessor = new JavaChangedMethodDetectorDiffPostProcessor()
 		val changes = JavaModelComparator.compareJavaModels(newState, currentState,
-				newResources, currentResources, postProcessor).differences
+				newResources, currentResources, postProcessor)
 		// Replay the EMF compare differences.
 		val mergerRegistry = IMerger.RegistryImpl.createStandaloneInstance()
 		val merger = new BatchMerger(mergerRegistry)
-		merger.copyAllLeftToRight(changes, new BasicMonitor)
+		merger.copyAllLeftToRight(changes.differences, new BasicMonitor)
 		postProcessor.getChangedMethods.forEach[
 			val oldName = it.name
 			it.name = ""
 			it.name = oldName
 		]
+		val rs = new ResourceSetImpl();
+		val resource = rs.createResource(URI.createURI("model://Comparison.comparison"));
+		resource.contents.add(changes)
+		resource.unload()
 	}
 
 	/**
