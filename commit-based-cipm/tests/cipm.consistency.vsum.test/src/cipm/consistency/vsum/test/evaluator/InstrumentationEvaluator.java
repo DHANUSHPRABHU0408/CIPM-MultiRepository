@@ -8,7 +8,7 @@ import org.emftext.language.java.statements.Return;
 import org.emftext.language.java.statements.Statement;
 import org.palladiosimulator.pcm.repository.OperationSignature;
 
-import cipm.consistency.base.models.instrumentation.InstrumentationModel.InstrumentationModel;
+import tools.cipm.models.instrumentation.InstrumentationModel.InstrumentationModel;
 import cipm.consistency.commitintegration.CommitIntegrationController;
 import cipm.consistency.commitintegration.CommitIntegrationState;
 import cipm.consistency.models.code.CodeModelFacade;

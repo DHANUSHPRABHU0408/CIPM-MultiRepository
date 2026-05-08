@@ -27,7 +27,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.xtext.EcoreUtil2;
 import org.palladiosimulator.pcm.repository.Repository;
 
-import cipm.consistency.base.models.instrumentation.InstrumentationModel.InstrumentationModel;
+import tools.cipm.models.instrumentation.InstrumentationModel.InstrumentationModel;
 import cipm.consistency.base.shared.ModelUtil;
 import cipm.consistency.commitintegration.CommitIntegration;
 import cipm.consistency.commitintegration.CommitIntegrationState;

@@ -8,7 +8,7 @@ Bundle-RequiredExecutionEnvironment: JavaSE-11
 Require-Bundle: tools.vitruv.framework.vsum,
  tools.vitruv.dsls.reactions.runtime,
  cipm.consistency.base.shared,
- cipm.consistency.models.instrumentation,
+ tools.cipm.models.instrumentation,
  cipm.consistency.commitintegration.settings,
  cipm.consistency.models,
  org.eclipse.emf.compare;bundle-version="3.5.3",
@@ -18,5 +18,6 @@ Require-Bundle: tools.vitruv.framework.vsum,
  org.splevo.jamopp.diffing,
  org.splevo.jamopp.extraction,
  org.splevo.extraction,
- org.splevo.commons
+ org.splevo.commons,
+ de.uka.ipd.sdq.identifier
 Export-Package: cipm.consistency.vsum

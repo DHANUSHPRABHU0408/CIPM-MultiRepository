@@ -314,7 +314,7 @@ public class GitRepositoryWrapper {
         CanonicalTreeParser newTreeParser = new CanonicalTreeParser();
         newTreeParser.reset(treeReader, newTreeId);
 
-        var cs = EvaluationDataContainer.getGlobalContainer().getChangeStatistic();
+        var cs = EvaluationDataContainer.get().getChangeStatistic();
 		cs.setNumberAddedLines(0);
 		cs.setNumberRemovedLines(0);
         OutputStream outputStream = NullOutputStream.INSTANCE;

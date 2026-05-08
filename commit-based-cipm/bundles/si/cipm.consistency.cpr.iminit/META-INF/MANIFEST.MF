@@ -6,6 +6,7 @@ Bundle-Version: 1.0.0.qualifier
 Export-Package: cipm.consistency.cpr.iminit,
  mir.reactions.imInit
 Require-Bundle: tools.vitruv.dsls.reactions.runtime,
- cipm.consistency.models.instrumentation
+ tools.cipm.models.instrumentation,
+ de.uka.ipd.sdq.identifier
 Automatic-Module-Name: cipm.consistency.cpr.iminit
 Bundle-RequiredExecutionEnvironment: JavaSE-11

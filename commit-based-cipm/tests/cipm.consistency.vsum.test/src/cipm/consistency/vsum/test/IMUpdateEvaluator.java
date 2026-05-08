@@ -24,8 +24,8 @@ import org.palladiosimulator.pcm.seff.ServiceEffectSpecification;
 import org.palladiosimulator.pcm.seff.StartAction;
 import org.palladiosimulator.pcm.seff.StopAction;
 
-import cipm.consistency.base.models.instrumentation.InstrumentationModel.InstrumentationModel;
-import cipm.consistency.base.models.instrumentation.InstrumentationModel.ServiceInstrumentationPoint;
+import tools.cipm.models.instrumentation.InstrumentationModel.InstrumentationModel;
+import tools.cipm.models.instrumentation.InstrumentationModel.ServiceInstrumentationPoint;
 import cipm.consistency.commitintegration.diff.util.pcm.PCMModelComparator;
 import cipm.consistency.tools.evaluation.data.ImUpdateEvalData;
 
@@ -40,14 +40,15 @@ public class IMUpdateEvaluator {
 	public void evaluateIMUpdate(Repository repo, InstrumentationModel im, ImUpdateEvalData evalData, String rootDir) {
 		currentEvalResult = evalData;
 		
-		currentEvalResult.setNumberAllIP(0);
+		currentEvalResult.setNumberIP(0);
 		for (TreeIterator<EObject> iter = im.eAllContents(); iter.hasNext(); iter.next()) {
 			currentEvalResult.setNumberIP(currentEvalResult.getNumberIP() + 1);
 		}
 		
-		currentEvalResult.setNumberMatchedIP(0);
+		currentEvalResult.setNumberMatchedSIP(0);
+		currentEvalResult.setNumberMatchedAIP(0);
 		currentEvalResult.setNumberSIP(0);
-		currentEvalResult.setNumberActivatedAIP(0);
+		currentEvalResult.setNumberActiveAIP(0);
 		for (RepositoryComponent com : repo.getComponents__Repository()) {
 			if (com instanceof BasicComponent) {
 				BasicComponent basicCom = (BasicComponent) com;

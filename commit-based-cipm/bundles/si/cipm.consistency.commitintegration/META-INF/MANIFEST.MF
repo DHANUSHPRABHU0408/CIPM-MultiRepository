@@ -17,9 +17,10 @@ Require-Bundle: org.apache.log4j,
  org.palladiosimulator.pcm,
  cipm.consistency.base.shared,
  cipm.consistency.tools.evaluation.data,
- cipm.consistency.models.instrumentation,
+ tools.cipm.models.instrumentation,
  tools.vitruv.framework.vsum;bundle-version="3.0.0",
  cipm.consistency.models,
- cipm.consistency.vsum
+ cipm.consistency.vsum,
+ org.apache.commons.lang
 Automatic-Module-Name: cipm.consistency.commitintegration
 Bundle-RequiredExecutionEnvironment: JavaSE-11
