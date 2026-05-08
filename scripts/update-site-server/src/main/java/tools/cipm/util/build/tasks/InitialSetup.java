@@ -23,13 +23,12 @@ public class InitialSetup implements Runnable {
         Path root = Paths.get("..", "..");
 
         checkoutGitSubmodules(root);
-        collectCIPMPipelineDependencies(root);
-        copyCIPMPipelinePlugins(root);
+        collectBaseSharedDependencies(root);
         
-        Path vitruvDir = root.resolve("Vitruv");
-        MavenWrapperUtil.copyMavenWrapper(Paths.get("."), vitruvDir);
-        MavenWrapperUtil.executeMavenWrapper(vitruvDir, "clean verify");
-        MavenWrapperUtil.deleteMavenWrapper(vitruvDir);
+        //Path vitruvDir = root.resolve(Paths.get("commit-based-cipm", "bundles", "Vitruv"));
+        //MavenWrapperUtil.copyMavenWrapper(Paths.get("."), vitruvDir);
+        //MavenWrapperUtil.executeMavenWrapper(vitruvDir, "clean verify");
+        //MavenWrapperUtil.deleteMavenWrapper(vitruvDir);
     }
 
     private void checkoutGitSubmodules(Path root) {
@@ -44,42 +43,10 @@ public class InitialSetup implements Runnable {
         }
     }
 
-    private void collectCIPMPipelineDependencies(Path root) {
-        int executionResult = 0;
-        try {
-            executionResult = DefaultExecutor
-                .builder()
-                .setWorkingDirectory(root.resolve(Paths.get("CIPM-Pipeline", "cipm.consistency.bridge.eclipse", "cipm.consistency.base.shared", "dep-generator")))
-                .get()
-                .execute(CommandLine.parse(getGradleWrapperCommand() + " bundle copyBundles"));
-        } catch (IOException e) {
-            exitAfterError("Could not copy dependencies for CIPM-Pipeline:", e);
-        }
-        checkForAndExitAfterFailure("Setting up the dependencies failed.", executionResult);
-    }
-
-    private String getGradleWrapperCommand() {
-        if (SystemUtils.IS_OS_WINDOWS) {
-            return "cmd.exe /c gradlew.bat";
-        } else {
-            return "bash gradlew";
-        }
-    }
-
-    private void copyCIPMPipelinePlugins(Path root) {
-        try {
-            List<Path> subDirectories = Files
-                .list(root.resolve(Paths.get("CIPM-Pipeline", "cipm.consistency.bridge.eclipse")))
-                .filter((path) -> Files.isDirectory(path) && Files.exists(path))
-                .collect(Collectors.toList());
-            for (Path subDir : subDirectories) {
-                FileUtils.copyDirectoryToDirectory(
-                    subDir.toFile(),
-                    root.resolve(Paths.get("commit-based-cipm", "bundles", "fi")).toFile()
-                );
-            }
-        } catch (IOException e) {
-            exitAfterError("Could not copy CIPM-Pipeline plugins:", e);
-        }
+    private void collectBaseSharedDependencies(Path root) {
+        Path depGeneratorDir = root.resolve(Paths.get("scripts", "dep-generator"));
+        MavenWrapperUtil.copyMavenWrapper(Paths.get("."), depGeneratorDir);
+        MavenWrapperUtil.executeMavenWrapper(depGeneratorDir, "package");
+        MavenWrapperUtil.deleteMavenWrapper(depGeneratorDir);
     }
 }
