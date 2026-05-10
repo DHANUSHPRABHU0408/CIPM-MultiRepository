@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
@@ -29,6 +30,13 @@ public class CoronaWarnAppCITest extends AbstractCITest {
 	public static void setUpForAll() {
 		JavaParserAndPropagatorUtils.setConfiguration(new JavaParserAndPropagatorUtils.Configuration(false,
 				new BuildFileBasedComponentDetectionStrategy()));
+	}
+
+	@BeforeEach
+	@Override
+	public void setUp() throws Exception {
+		super.setUp();
+		this.controller.getCommitChangePropagator().initialize();
 	}
 
 	@Override

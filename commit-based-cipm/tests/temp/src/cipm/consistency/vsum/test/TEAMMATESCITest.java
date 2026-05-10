@@ -2,6 +2,7 @@ package cipm.consistency.vsum.test;
 
 import java.io.File;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -29,6 +30,13 @@ public class TEAMMATESCITest extends AbstractCITest {
 	public static void setUpForAll() {
 		JavaParserAndPropagatorUtils.setConfiguration(new JavaParserAndPropagatorUtils.Configuration(false,
 				new TEAMMATESComponentDetectionStrategy()));
+	}
+	
+	@BeforeEach
+	@Override
+	public void setUp() throws Exception {
+		super.setUp();
+		this.controller.getCommitChangePropagator().initialize();
 	}
 	
 	@Override

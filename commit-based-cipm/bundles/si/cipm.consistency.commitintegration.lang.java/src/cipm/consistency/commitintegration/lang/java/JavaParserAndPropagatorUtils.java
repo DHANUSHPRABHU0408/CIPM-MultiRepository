@@ -1,6 +1,8 @@
 package cipm.consistency.commitintegration.lang.java;
 
+import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
@@ -16,6 +18,7 @@ import org.emftext.language.java.classifiers.ConcreteClassifier;
 import org.emftext.language.java.containers.CompilationUnit;
 import org.emftext.language.java.containers.JavaRoot;
 import org.emftext.language.java.containers.Origin;
+import org.emftext.language.java.references.StringReference;
 import org.emftext.language.java.types.PrimitiveType;
 
 import cipm.consistency.commitintegration.lang.detection.ComponentDetector;
@@ -68,11 +71,17 @@ public final class JavaParserAndPropagatorUtils {
 		
 		if (!config.resolveAll) {
 			// Wrap all primitive types to ensure that their wrapper classes are loaded.
+			// Remove \u0000 from StringReferences since they are illegal XML characters.
 			for (var resource : new ArrayList<>(resourceSet.getResources())) {
 				resource.getAllContents().forEachRemaining(obj -> {
 					if (obj instanceof PrimitiveType) {
 						var type = (PrimitiveType) obj;
 						type.wrapPrimitiveType();
+					} else if (obj instanceof StringReference) {
+						var stringRef = (StringReference) obj;
+						if (stringRef.getValue().contains("\u0000")) {
+							stringRef.setValue(stringRef.getValue().replace("\u0000", ""));
+						}
 					}
 				});
 			}
