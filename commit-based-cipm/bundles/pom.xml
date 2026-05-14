@@ -17,6 +17,7 @@
 			<id>run-one</id>
 			<modules>
 				<module>fi</module>
+				<module>Vitruv</module>
 			</modules>
 		</profile>
 		<profile>
