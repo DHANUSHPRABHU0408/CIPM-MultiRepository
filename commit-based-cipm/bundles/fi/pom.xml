@@ -16,11 +16,6 @@
 		<module>cipm.consistency.base.shared</module>
 		<module>cipm.consistency.commitintegration.diff.util</module>
 		<module>cipm.consistency.commitintegration.settings</module>
-		<module>cipm.consistency.domains.im</module>
-		<module>cipm.consistency.domains.java</module>
-		<module>cipm.consistency.domains.pcm</module>
-		<module>cipm.consistency.models.instrumentation</module>
-		<module>cipm.consistency.tools.evaluation.data</module>
 		<module>org.splevo.commons</module>
 		<module>org.splevo.diffing</module>
 		<module>org.splevo.extraction</module>

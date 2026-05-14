@@ -18,7 +18,6 @@
 			<modules>
 				<module>bundles</module>
 				<module>releng/cipm.consistency.workflow</module>
-				<module>releng/cipm.consistency.updatesite.fi</module>
 			</modules>
 		</profile>
 		<profile>
