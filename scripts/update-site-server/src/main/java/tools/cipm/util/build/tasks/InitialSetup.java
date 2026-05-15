@@ -25,10 +25,10 @@ public class InitialSetup implements Runnable {
         checkoutGitSubmodules(root);
         collectBaseSharedDependencies(root);
         
-        //Path vitruvDir = root.resolve(Paths.get("commit-based-cipm", "bundles", "Vitruv"));
-        //MavenWrapperUtil.copyMavenWrapper(Paths.get("."), vitruvDir);
-        //MavenWrapperUtil.executeMavenWrapper(vitruvDir, "clean verify");
-        //MavenWrapperUtil.deleteMavenWrapper(vitruvDir);
+        Path cipmDir = root.resolve(Paths.get("commit-based-cipm"));
+        MavenWrapperUtil.copyMavenWrapper(Paths.get("."), cipmDir);
+        MavenWrapperUtil.executeMavenWrapper(cipmDir, "clean verify -P run-one");
+        MavenWrapperUtil.deleteMavenWrapper(cipmDir);
     }
 
     private void checkoutGitSubmodules(Path root) {
