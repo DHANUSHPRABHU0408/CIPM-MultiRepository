@@ -11,11 +11,11 @@ When executing one of the scripts, it is possible that the error `Internal error
 
 ## Setup with Eclipse
 
-With the following steps, the project can be setup within Eclipse. As a reminder, this project requires Java 11. As Eclipse version, the Eclipse Modeling Tools 2022-09 are currently required. It also requires the installation of Xtext (from `https://download.eclipse.org/releases/2022-09/`), Vitruv (from `https://vitruv-tools.github.io/updatesite/release/`), and CIPM Metamodels (from `https://CIPM-tools.github.io/updatesite/release/cipm-metamodels-1.0.1/`).
+With the following steps, the project can be setup within Eclipse. As a reminder, this project requires Java 11. As Eclipse version, the Eclipse Modeling Tools 2022-09 are currently required. It also requires the installation of Xtext (from `https://download.eclipse.org/releases/2022-09/`), Vitruv (from `https://vitruv-tools.github.io/updatesite/release/`), and CIPM Metamodels (from `https://CIPM-tools.github.io/updatesite/release/cipm-aggr-metamodels-1.0.1/`).
 
 1. Execute the script `scripts/setup.bat` (under Windows) or `scripts/setup` (under Linux-based systems).
 
-1. In parallel, within Eclipse, install the required plugins for Xtext, Vitruv, and CIPM Metamodels. In Eclipse, use the menu `Help -> Install New Software`, and enter a URL from above into `Work with:`. Then, select the Xtext SDK (you can search for `Xtext`) for installing Xtext, and select all plugins for installing Vitruv and the CIPM Metamodels. Continue each time with the installation of the plugins.
+1. In parallel, within Eclipse, install the required plugins for Xtext, Vitruv, and CIPM Metamodels. In Eclipse, use the menu `Help -> Install New Software`, and enter a URL from above into `Work with:`. Then, select the Xtext SDK (you can search for `Xtext`) for installing Xtext, select all plugins except `Vitruv Demo Metamodels`, `Vitruv Demos`, and `Vitruv Tool Adapters` for installing Vitruv, and select all plugins for installing the CIPM Metamodels. Continue each time with the installation of the plugins.
 
 1. After executing the script, all bundles from `commit-based-cipm/bundles/fi`, `commit-based-cipm/bundles/si`, `commit-based-cipm/bundles/Vitruv/bundles`, `commit-based-cipm/releng-dev`, and `commit-based-cipm/tests` can be imported into the Eclipse instance. The `releng-dev` directory contains the bundle `cipm.consistency.targetplatform` with the `cipm.consistency.targetplatform.target` file. Within Eclipse, open this file and click on `Set as active target platform`. Wait until the target platform is set, loaded, and the plugins are successfully compiled. It is possible that the target platform needs to be reloaded.
 
