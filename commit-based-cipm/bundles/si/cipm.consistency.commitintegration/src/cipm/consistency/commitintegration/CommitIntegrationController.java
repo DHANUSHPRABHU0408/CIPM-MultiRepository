@@ -83,7 +83,7 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
      * 
      * @return The Propagation instance including the used model paths
      */
-    private Optional<Propagation> propagateCurrentCheckout() {
+    public Optional<Propagation> propagateCurrentCheckout() {
         // run possible hooks
         prePropagationHook();
 
@@ -97,7 +97,7 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
             .getWorkTree()
             .toPath();
         var resource = state.getCodeModelFacade()
-            .parseSourceCodeDir(workTree);
+            .parseSourceCodeDir(workTree.getParent()); // TODO: Adapt properly for multiple repositories.
         if (resource == null) {
             LOGGER.error("Error parsing code model, not running propagation");
             return Optional.empty();
