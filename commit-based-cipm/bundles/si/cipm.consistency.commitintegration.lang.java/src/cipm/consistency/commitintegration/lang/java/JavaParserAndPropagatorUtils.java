@@ -119,9 +119,17 @@ public final class JavaParserAndPropagatorUtils {
 			targetResource.getContents().add(mod);
 			// For every compilation unit in the module, the module of its package is set to
 			// the newly created module.
-			v.stream().map(resource -> resource.getContents().get(0)).map(obj -> (CompilationUnit) obj)
-					.map(cu -> cu.getChildrenByType(ConcreteClassifier.class)).flatMap(cc -> cc.stream())
-					.map(cc -> cc.getPackage()).filter(p -> p != null).forEach(p -> p.setModule(mod));
+			v
+				.stream()
+				.filter(resource -> !resource.getContents().isEmpty())
+				.filter(resource -> resource.getContents().get(0) instanceof CompilationUnit)
+				.map(resource -> resource.getContents().get(0))
+				.map(obj -> (CompilationUnit) obj)
+				.map(cu -> cu.getChildrenByType(ConcreteClassifier.class))
+				.flatMap(cc -> cc.stream())
+				.map(cc -> cc.getPackage())
+				.filter(p -> p != null)
+				.forEach(p -> p.setModule(mod));
 		});
 	}
 	
