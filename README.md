@@ -11,7 +11,7 @@ When executing one of the scripts, it is possible that the error `Internal error
 
 ## Setup with Eclipse
 
-With the following steps, the project can be setup within Eclipse. As a reminder, this project requires Java 11. As Eclipse version, the Eclipse Modeling Tools 2022-09 are currently required. It also requires the installation of Xtext (from `https://download.eclipse.org/releases/2022-09/`), Vitruv (from `https://vitruv-tools.github.io/updatesite/release/`), and CIPM Metamodels (from `https://CIPM-tools.github.io/updatesite/release/cipm-aggr-metamodels-1.0.1/`).
+With the following steps, the project can be setup within Eclipse. As a reminder, this project requires Java 11. As Eclipse version, the Eclipse Modeling Tools 2022-09 are currently required. It also requires the installation of Xtext (from `https://download.eclipse.org/releases/2022-09/`), Vitruv (from `https://vitruv-tools.github.io/updatesite/release/change`, `https://vitruv-tools.github.io/updatesite/release/dsls`, `https://vitruv-tools.github.io/updatesite/release/framework`), and CIPM Metamodels (from `https://CIPM-tools.github.io/updatesite/release/cipm-aggr-metamodels-1.0.1/`).
 
 1. Execute the script `scripts/setup.bat` (under Windows) or `scripts/setup` (under Linux-based systems).
 
