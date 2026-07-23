@@ -18,6 +18,7 @@ import org.eclipse.jgit.errors.RevisionSyntaxException;
 import cipm.consistency.models.code.CodeModelFacade;
 import cipm.consistency.tools.evaluation.data.EvaluationDataContainer;
 import cipm.consistency.vsum.Propagation;
+import cipm.consistency.commitintegration.git.GitRepositoryWrapper;
 import tools.vitruv.change.composite.description.PropagatedChange;
 
 /**
@@ -96,8 +97,16 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         var workTree = state.getGitRepositoryWrapper()
             .getWorkTree()
             .toPath();
+
+        LOGGER.info("WorkTree = " + workTree);
+        LOGGER.info("Parent   = " + workTree.getParent());
+
+        // Parses the active repository's own work tree only. This intentionally feeds into
+        // a single, SHARED VsumFacade/PCM model across all repositories (Option A / shared-VSUM
+        // design) - each repository's parsed code model is propagated into the same VSUM in
+        // sequence, rather than each repository getting its own isolated VSUM.
         var resource = state.getCodeModelFacade()
-            .parseSourceCodeDir(workTree.getParent()); // TODO: Adapt properly for multiple repositories.
+            .parseSourceCodeDir(workTree);
         if (resource == null) {
             LOGGER.error("Error parsing code model, not running propagation");
             return Optional.empty();
@@ -113,6 +122,16 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         var previousRepositoryPath = state.createRepositorySnapshot();
         var parsedModelPath = state.createParsedCodeModelSnapshot();
         state.setCurrentParsedModelPath(parsedModelPath);
+
+        // DIAGNOSTIC: verify the shared PCM model is accumulating content across repositories
+        // rather than being overwritten. If this design is working correctly, the snapshot
+        // file size should generally grow (or at least not shrink to near-zero) after each
+        // successive repository is propagated.
+        if (previousRepositoryPath != null) {
+            long snapshotSizeBytes = FileUtils.sizeOf(previousRepositoryPath.toFile());
+            LOGGER.info(String.format("PCM repository snapshot size after this repo: %d bytes (%s)",
+                    snapshotSizeBytes, previousRepositoryPath));
+        }
 
         long propagationTime = System.currentTimeMillis();
 
@@ -135,6 +154,15 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
             // successful propagation
             state.setLastSuccessfulPropagation(propagation);
         }
+
+        // DIAGNOSTIC: how many changes did this repository's propagation contribute to the
+        // shared VSUM? Comparing this across repositories confirms each one is actually
+        // being processed distinctly, not just re-propagating the same/previous model.
+        LOGGER.info(String.format("Propagation for %s produced %d PropagatedChange(s)",
+                state.getGitRepositoryWrapper()
+                    .getCurrentCommitHash(),
+                propagation.getChanges()
+                    .size()));
 
         addChangeNumbersToEvaluationData(propagation.getChanges());
 
@@ -258,6 +286,45 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
             allPropagations.add(propagation);
         }
         return allPropagations;
+    }
+
+    /**
+     * Propagates the current checkout for every repository managed by the commit integration
+     * state. For each repository, the state's active {@link GitRepositoryWrapper} is switched to
+     * that repository before propagating.
+     * <p>
+     * All repositories are propagated into the SAME shared {@code VsumFacade} / PCM model
+     * (Option A). This matches the project's intended design: {@link MultiRepositoryWrapper}
+     * and {@link GitRepositoryWrapper} stay separate git-level concerns, while the single
+     * {@link CommitIntegrationState} continues to own one VSUM for the whole multi-repository
+     * system.
+     *
+     * @return a list of {@link Propagation} results, one per repository, in the order the
+     *         repositories were processed.
+     */
+    public List<Optional<Propagation>> propagateAllRepositories() {
+
+        List<Optional<Propagation>> propagations = new ArrayList<>();
+
+        for (GitRepositoryWrapper repository : state.getGitRepositoryWrappers()) {
+
+            state.setGitRepositoryWrapper(repository);
+
+            LOGGER.info("Processing repository: "
+                    + repository.getRepository()
+                            .getDirectory()
+                            .getParentFile()
+                            .getName());
+
+            LOGGER.info("Repository: "
+                    + repository.getRepository()
+                            .getWorkTree()
+                            .getAbsolutePath());
+
+            propagations.add(propagateCurrentCheckout());
+        }
+
+        return propagations;
     }
 
     protected boolean prePropagationChecks(String firstCommitId, String secondCommitId) {

@@ -63,6 +63,7 @@ public abstract class JavaCommitIntegration extends CommitIntegrationController<
     	}
         return repoWrapper;
     }
+    
 
     @Override
     public StateBasedChangeResolutionStrategy getStateBasedChangeResolutionStrategy() {

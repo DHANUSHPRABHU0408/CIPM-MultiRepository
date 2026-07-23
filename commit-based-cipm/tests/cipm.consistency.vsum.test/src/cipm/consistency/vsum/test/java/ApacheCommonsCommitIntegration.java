@@ -1,6 +1,9 @@
 package cipm.consistency.vsum.test.java;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import cipm.consistency.commitintegration.git.MultiRepositoryWrapper;
+import cipm.consistency.commitintegration.git.GitRepositoryWrapper;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -20,8 +23,25 @@ import cipm.consistency.cpr.javapcm.CommitIntegrationJavaPCMChangePropagationSpe
 import tools.vitruv.change.propagation.ChangePropagationSpecification;
 
 public class ApacheCommonsCommitIntegration extends JavaCommitIntegration {
+
+	// repositories are cloned here, NOT under getRootPath() (target/ApacheCommonsTest)
+	private static final Path REPOSITORIES_ROOT = Path.of("target", "apache-commons");
+
+	private static final String JAVA_FILE_EXTENSION = "java";
+	private static final boolean DETECT_RENAMES = true;
+
+	private static final List<String> REPOSITORIES = List.of(
+	    "commons-cli",
+	    "commons-csv",
+	    "commons-exec",
+	    "commons-statistics"
+	);
+
 	private CommitIntegrationFailureMode failureMode = CommitIntegrationFailureMode.ABORT;
 	private Path rootPath;
+
+	// cached so repositories aren't rebuilt/reinitialized on every call
+	private MultiRepositoryWrapper multiRepositoryWrapper;
 	
 	public ApacheCommonsCommitIntegration(Path root) {
 		this.rootPath = root;
@@ -63,5 +83,46 @@ public class ApacheCommonsCommitIntegration extends JavaCommitIntegration {
 			throws InvalidRemoteException, TransportException, IOException, GitAPIException {
 		super.initialize(commitIntegration);
 		JavaParserAndPropagatorUtils.setConfiguration(new Configuration(false));
+	}
+
+	@Override
+	public MultiRepositoryWrapper getMultiRepositoryWrapper()
+	        throws InvalidRemoteException, TransportException,
+	        GitAPIException, IOException {
+
+	    if (multiRepositoryWrapper != null) {
+	        return multiRepositoryWrapper;
+	    }
+
+	    List<GitRepositoryWrapper> repositories = new ArrayList<>();
+
+	    for (String repo : REPOSITORIES) {
+
+	        Path repoLocation = REPOSITORIES_ROOT.resolve(repo);
+
+	        if (!repoLocation.toFile().exists()) {
+	            throw new IOException("Repository not found: " + repoLocation);
+	        }
+
+	        System.out.println("--------------------------------");
+	        System.out.println("Adding repository: " + repo);
+	        System.out.println("Location: " + repoLocation);
+	        System.out.println("--------------------------------");
+
+	        GitRepositoryWrapper wrapper =
+	                new GitRepositoryWrapper(JAVA_FILE_EXTENSION, DETECT_RENAMES)
+	                        .withLocalDirectory(repoLocation)
+	                        .initialize();
+
+	        repositories.add(wrapper);
+	    }
+
+	    System.out.println();
+	    System.out.println("Total repositories loaded = " + repositories.size());
+	    System.out.println();
+
+	    multiRepositoryWrapper = new MultiRepositoryWrapper(repositories);
+
+	    return multiRepositoryWrapper;
 	}
 }

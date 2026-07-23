@@ -11,7 +11,7 @@ import org.eclipse.jgit.api.errors.InvalidRemoteException;
 import org.eclipse.jgit.api.errors.TransportException;
 
 import cipm.consistency.commitintegration.git.GitRepositoryWrapper;
-import cipm.consistency.commitintegration.settings.CommitIntegrationSettingsContainer;
+import cipm.consistency.commitintegration.git.MultiRepositoryWrapper;
 import cipm.consistency.models.code.CodeModelFacade;
 import cipm.consistency.models.im.ImFacade;
 import cipm.consistency.models.pcm.PcmFacade;
@@ -37,6 +37,7 @@ public class CommitIntegrationState<CM extends CodeModelFacade> {
 
     private CommitIntegrationDirLayout dirLayout;
     private GitRepositoryWrapper gitRepositoryWrapper;
+    private MultiRepositoryWrapper multiRepositoryWrapper;
     private VsumFacade vsumFacade;
     private PcmFacade pcmFacade;
     private ImFacade imFacade;
@@ -87,11 +88,60 @@ public class CommitIntegrationState<CM extends CodeModelFacade> {
 
         // the settings container needs to be initialized before everything else
         // CommitIntegrationSettingsContainer.initialize(dirLayout.getSettingsFilePath());
-        gitRepositoryWrapper = commitIntegration.getGitRepositoryWrapper();
+        multiRepositoryWrapper = commitIntegration.getMultiRepositoryWrapper();
+
+        System.out.println();
+        System.out.println("========== MULTI REPOSITORY ==========");
+
+        if (multiRepositoryWrapper == null) {
+            System.out.println("Wrapper = NULL");
+        } else {
+
+            System.out.println("Repository count = "
+                    + multiRepositoryWrapper.size());
+
+            int i = 1;
+
+            for (GitRepositoryWrapper repo :
+                    multiRepositoryWrapper.getRepositories()) {
+
+                System.out.println("Repository "
+                        + i++);
+
+                System.out.println(repo.getRepository()
+                        .getDirectory()
+                        .getParentFile());
+
+                System.out.println();
+            }
+        }
+
+        System.out.println("======================================");
+
+        if (multiRepositoryWrapper != null && !multiRepositoryWrapper.isEmpty()) {
+            gitRepositoryWrapper = multiRepositoryWrapper.getRepository(0);
+        } else {
+            gitRepositoryWrapper = commitIntegration.getGitRepositoryWrapper();
+        }
 
         // initialize models
+     // initialize models
+
+        System.out.println("======================================");
+        System.out.println("ROOT PATH : " + dirLayout.getRootDirPath());
+        System.out.println("PCM PATH  : " + dirLayout.getPcmDirPath());
+        System.out.println("IM PATH   : " + dirLayout.getImDirPath());
+        System.out.println("ROOT EXISTS : " + dirLayout.getRootDirPath().toFile().exists());
+        System.out.println("PCM EXISTS  : " + dirLayout.getPcmDirPath().toFile().exists());
+        System.out.println("======================================");
+
         pcmFacade.initialize(dirLayout.getPcmDirPath());
+
+        System.out.println("PCM INITIALIZED");
+
         imFacade.initialize(dirLayout.getImDirPath());
+
+        System.out.println("IM INITIALIZED");
 
         // initialize the code model
         codeModelFacade = commitIntegration.getCodeModelFacadeSupplier()
@@ -113,7 +163,13 @@ public class CommitIntegrationState<CM extends CodeModelFacade> {
         LOGGER.debug("Disposing of the CommitIntegrationState");
         vsumFacade.getVsum()
             .dispose();
-        gitRepositoryWrapper.closeRepository();
+        if (multiRepositoryWrapper != null) {
+            for (GitRepositoryWrapper wrapper : multiRepositoryWrapper.getRepositories()) {
+                if (wrapper != null) {
+                    wrapper.closeRepository();
+                }
+            }
+        }
     }
 
     public Path createParsedCodeModelSnapshot() {
@@ -233,6 +289,38 @@ public class CommitIntegrationState<CM extends CodeModelFacade> {
 
     public GitRepositoryWrapper getGitRepositoryWrapper() {
         return gitRepositoryWrapper;
+    }
+
+    public void setGitRepositoryWrapper(GitRepositoryWrapper gitRepositoryWrapper) {
+        this.gitRepositoryWrapper = gitRepositoryWrapper;
+    }
+
+    /**
+     * @return the {@link MultiRepositoryWrapper} managing all repositories involved in this
+     *         integration state.
+     */
+    public MultiRepositoryWrapper getMultiRepositoryWrapper() {
+        return multiRepositoryWrapper;
+    }
+
+    public void setMultiRepositoryWrapper(MultiRepositoryWrapper multiRepositoryWrapper) {
+        this.multiRepositoryWrapper = multiRepositoryWrapper;
+
+        if (multiRepositoryWrapper != null && !multiRepositoryWrapper.isEmpty()) {
+            this.gitRepositoryWrapper = multiRepositoryWrapper.getRepository(0);
+        }
+    }
+
+    /**
+     * Legacy accessor kept for backward compatibility with code that still expects a
+     * {@link List} of {@link GitRepositoryWrapper}s. Null-safe: returns an empty list if
+     * {@link #multiRepositoryWrapper} has not been initialized yet.
+     *
+     * @return the list of repositories wrapped by {@link #multiRepositoryWrapper}, or an empty
+     *         list if none exist yet
+     */
+    public List<GitRepositoryWrapper> getGitRepositoryWrappers() {
+        return multiRepositoryWrapper != null ? multiRepositoryWrapper.getRepositories() : List.of();
     }
 
     public VsumFacade getVsumFacade() {

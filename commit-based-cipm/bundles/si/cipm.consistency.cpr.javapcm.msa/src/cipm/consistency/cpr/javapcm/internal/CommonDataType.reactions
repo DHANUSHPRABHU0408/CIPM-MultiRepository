@@ -1,5 +1,6 @@
 import org.palladiosimulator.pcm.repository.RepositoryPackage
 import org.palladiosimulator.pcm.repository.CompositeDataType
+import org.palladiosimulator.pcm.repository.DataType
 import org.emftext.language.java.classifiers.ConcreteClassifier
 import tools.vitruv.applications.pcmjava.java2pcm.TypeReferenceCorrespondenceHelper
 import org.emftext.language.java.members.Field
@@ -45,10 +46,20 @@ routine createInnerDeclaration(pcm::CompositeDataType dataType, java::Field java
 	}
 	update {
 		checkCollectionDataTypeCreation(javaField.typeReference)
+		var DataType resolvedType = null
+		try {
+			resolvedType = TypeReferenceCorrespondenceHelper.
+				getDataTypeFromTypeReference(javaField.typeReference, correspondenceModel,
+					userInteractor, repository)
+		} catch (IllegalStateException e) {
+			System.err.println("Skipping InnerDeclaration creation: could not resolve PCM data type for "
+				+ javaField.typeReference + " on field " + javaField.name + " (" + e.getMessage() + ")")
+		}
+		if (resolvedType === null) {
+			return
+		}
 		innerDeclaration.entityName = javaField.name
-		innerDeclaration.datatype_InnerDeclaration = TypeReferenceCorrespondenceHelper.
-			getDataTypeFromTypeReference(javaField.typeReference, correspondenceModel,
-				userInteractor, repository)
+		innerDeclaration.datatype_InnerDeclaration = resolvedType
 		innerDeclaration.compositeDataType_InnerDeclaration = dataType
 		addCorrespondenceBetween(innerDeclaration, javaField)
 		checkInnerDeclarationsCreation(innerDeclaration.datatype_InnerDeclaration, javaField.typeReference)
@@ -56,13 +67,20 @@ routine createInnerDeclaration(pcm::CompositeDataType dataType, java::Field java
 }
 
 routine checkCollectionDataTypeCreation(java::TypeReference typeRef) {
-	match {
-		val repo = retrieve pcm::Repository corresponding to RepositoryPackage.Literals.REPOSITORY
-	}
-	update {
-		val target = typeRef.target
+    match {
+        val repo = retrieve pcm::Repository corresponding to RepositoryPackage.Literals.REPOSITORY
+    }
+    update {
+        if (typeRef === null) {
+            return
+        }
+
+        val target = typeRef.target
 		if (target instanceof ConcreteClassifier) {
 			val classifierReference = typeRef.pureClassifierReference
+			if (classifierReference === null) {
+    		return
+			}
 			val superRef = target.superTypeReferences
 			for (superReference : superRef) {
 				if (superReference.target instanceof Interface) {
@@ -108,8 +126,17 @@ routine createOrFindCollectionDataType(java::TypeReference typeRef, java::TypeRe
 	}
 	update {
 		checkCollectionDataTypeCreation(innerDeclaration)
-		val innerType = TypeReferenceCorrespondenceHelper
-			.getDataTypeFromTypeReference(innerDeclaration, correspondenceModel, userInteractor, repo)
+		var DataType innerType = null
+		try {
+			innerType = TypeReferenceCorrespondenceHelper
+				.getDataTypeFromTypeReference(innerDeclaration, correspondenceModel, userInteractor, repo)
+		} catch (IllegalStateException e) {
+			System.err.println("Skipping CollectionDataType creation: could not resolve PCM data type for "
+				+ innerDeclaration + " (" + e.getMessage() + ")")
+		}
+		if (innerType === null) {
+			return
+		}
 		for (collType : dataTypes) {
 			if (collType.innerType_CollectionDataType === innerType) {
 				return
@@ -140,8 +167,18 @@ routine createOrFindCollectionDataTypeForArray(java::TypeReference elementType) 
 		val repo = retrieve pcm::Repository corresponding to RepositoryPackage.Literals.REPOSITORY
 	}
 	update {
-		val innerType = TypeReferenceCorrespondenceHelper.getDataTypeFromTypeReference(
-			elementType, correspondenceModel, userInteractor, repo)
+		var DataType resolvedInnerType = null
+		try {
+			resolvedInnerType = TypeReferenceCorrespondenceHelper.getDataTypeFromTypeReference(
+				elementType, correspondenceModel, userInteractor, repo)
+		} catch (IllegalStateException e) {
+			System.err.println("Skipping array CollectionDataType creation: could not resolve PCM data type for "
+				+ elementType + " (" + e.getMessage() + ")")
+		}
+		if (resolvedInnerType === null) {
+			return
+		}
+		val innerType = resolvedInnerType
 		val types = repo.dataTypes__Repository.filter(CollectionDataType)
 			.filter[
 				it.innerType_CollectionDataType === innerType
@@ -174,8 +211,18 @@ routine changeInnerDeclarationType(java::TypeReference typeReference, java::Fiel
 	}
 	update {
 		checkCollectionDataTypeCreation(typeReference)
-		innerDeclaration.datatype_InnerDeclaration = TypeReferenceCorrespondenceHelper.
-			getDataTypeFromTypeReference(typeReference, correspondenceModel, userInteractor, repository)
+		var DataType dataType = null
+		try {
+			dataType = TypeReferenceCorrespondenceHelper.
+				getDataTypeFromTypeReference(typeReference, correspondenceModel, userInteractor, repository)
+		} catch (IllegalStateException e) {
+			System.err.println("Skipping InnerDeclaration update: could not resolve PCM data type for "
+				+ typeReference + " on field " + javaField.name + " (" + e.getMessage() + ")")
+		}
+		if (dataType === null) {
+			return
+		}
+		innerDeclaration.datatype_InnerDeclaration = dataType
 		checkInnerDeclarationsCreation(innerDeclaration.datatype_InnerDeclaration, typeReference)
 	}
 }

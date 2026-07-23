@@ -14,7 +14,7 @@ public class VitruvTest {
 	@Test
 	public void testVitruv() {
 		var resultContainer = new EvaluationDataContainer();
-		//resultContainer.setNumberOfPropagation(0);
+		// resultContainer.setNumberOfPropagation(0);
 		EvaluationDataContainer.set(resultContainer);
 		var controller = new VitruvCommitIntegration(Paths.get("target", "Vitruv"));
 		var millis = System.currentTimeMillis();
