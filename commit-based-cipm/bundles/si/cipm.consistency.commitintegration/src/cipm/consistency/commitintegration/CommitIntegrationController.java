@@ -105,8 +105,17 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         // a single, SHARED VsumFacade/PCM model across all repositories (Option A / shared-VSUM
         // design) - each repository's parsed code model is propagated into the same VSUM in
         // sequence, rather than each repository getting its own isolated VSUM.
+        long parseStart = System.nanoTime();
+
         var resource = state.getCodeModelFacade()
-            .parseSourceCodeDir(workTree);
+                .parseSourceCodeDir(workTree);
+
+        long parseEnd = System.nanoTime();
+
+        System.out.println(
+            "Java parsing: "
+            + (parseEnd - parseStart) / 1_000_000
+            + " ms");
         if (resource == null) {
             LOGGER.error("Error parsing code model, not running propagation");
             return Optional.empty();
@@ -119,8 +128,26 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         // reset evaluation data regarding the im update
         EvaluationDataContainer.get().resetImUpdateEval();
 
+        long repoSnapshotStart = System.nanoTime();
+
         var previousRepositoryPath = state.createRepositorySnapshot();
+
+        long repoSnapshotEnd = System.nanoTime();
+
+        System.out.println(
+            "Repository snapshot: "
+            + (repoSnapshotEnd - repoSnapshotStart)/1_000_000
+            + " ms");
+        long parsedSnapshotStart = System.nanoTime();
+
         var parsedModelPath = state.createParsedCodeModelSnapshot();
+
+        long parsedSnapshotEnd = System.nanoTime();
+
+        System.out.println(
+            "Parsed model snapshot: "
+            + (parsedSnapshotEnd - parsedSnapshotStart)/1_000_000
+            + " ms");
         state.setCurrentParsedModelPath(parsedModelPath);
 
         // DIAGNOSTIC: verify the shared PCM model is accumulating content across repositories
@@ -141,6 +168,10 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                 .getVsumCodeModelURI());
 
         propagationTime = System.currentTimeMillis() - propagationTime;
+        System.out.println(
+        	    "VSUM propagation: "
+        	    + propagationTime
+        	    + " ms");
         EvaluationDataContainer.get()
             .getExecutionTimes()
             .setChangePropagationTime(propagationTime);
@@ -166,7 +197,16 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
 
         addChangeNumbersToEvaluationData(propagation.getChanges());
 
+        long snapshotStart = System.nanoTime();
+
         var snapshotPath = state.createSnapshot();
+
+        long snapshotEnd = System.nanoTime();
+
+        System.out.println(
+            "Final snapshot: "
+            + (snapshotEnd - snapshotStart)/1_000_000
+            + " ms");
 
         // add some information needed for the evaluation to the propagation object
         propagation.setCommitIntegrationStateSnapshotPath(snapshotPath);
