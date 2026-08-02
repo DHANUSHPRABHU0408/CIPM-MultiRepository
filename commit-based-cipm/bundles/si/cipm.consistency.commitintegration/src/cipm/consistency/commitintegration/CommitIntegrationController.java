@@ -14,11 +14,12 @@ import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.RevisionSyntaxException;
 
+import cipm.consistency.commitintegration.git.GitRepositoryWrapper;
+import cipm.consistency.commitintegration.git.MultiRepositoryWrapper;
 // import cipm.consistency.commitintegration.lang.lua.runtimedata.ChangedResources; // TODO: Check if can be imported again after adding Lua model.
 import cipm.consistency.models.code.CodeModelFacade;
 import cipm.consistency.tools.evaluation.data.EvaluationDataContainer;
 import cipm.consistency.vsum.Propagation;
-import cipm.consistency.commitintegration.git.GitRepositoryWrapper;
 import tools.vitruv.change.composite.description.PropagatedChange;
 
 /**
@@ -85,8 +86,19 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
      * @return The Propagation instance including the used model paths
      */
     public Optional<Propagation> propagateCurrentCheckout() {
+        long totalStart = System.nanoTime();
+
         // run possible hooks
+        long preHookStart = System.nanoTime();
+
         prePropagationHook();
+
+        long preHookEnd = System.nanoTime();
+
+        System.out.println(
+            "Pre Hook : "
+            + (preHookEnd-preHookStart)/1_000_000
+            + " ms");
 
         LOGGER.info(String.format("\n\tPropagating commit #%d: %s", state.getSnapshotCount() + 1,
                 state.getGitRepositoryWrapper()
@@ -94,9 +106,18 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
 
         var previousParsedModelPath = state.getCurrentParsedModelPath();
 
+        long workTreeStart = System.nanoTime();
+
         var workTree = state.getGitRepositoryWrapper()
             .getWorkTree()
             .toPath();
+
+        long workTreeEnd = System.nanoTime();
+
+        System.out.println(
+            "Get WorkTree : "
+            + (workTreeEnd-workTreeStart)/1_000_000
+            + " ms");
 
         LOGGER.info("WorkTree = " + workTree);
         LOGGER.info("Parent   = " + workTree.getParent());
@@ -118,6 +139,14 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
             + " ms");
         if (resource == null) {
             LOGGER.error("Error parsing code model, not running propagation");
+
+            long totalEnd = System.nanoTime();
+
+            System.out.println(
+                "TOTAL PROPAGATION : "
+                + (totalEnd-totalStart)/1_000_000
+                + " ms");
+
             return Optional.empty();
         }
 
@@ -160,18 +189,21 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                     snapshotSizeBytes, previousRepositoryPath));
         }
 
-        long propagationTime = System.currentTimeMillis();
+        long propagationStart = System.nanoTime();
 
         // the actual propagation is done here
         var propagation = state.getVsumFacade()
             .propagateResource(resource, state.getDirLayout()
                 .getVsumCodeModelURI());
 
-        propagationTime = System.currentTimeMillis() - propagationTime;
+        long propagationEnd = System.nanoTime();
+
+        long propagationTime = (propagationEnd-propagationStart)/1_000_000;
+
         System.out.println(
-        	    "VSUM propagation: "
-        	    + propagationTime
-        	    + " ms");
+            "VSUM propagation : "
+            + propagationTime
+            + " ms");
         EvaluationDataContainer.get()
             .getExecutionTimes()
             .setChangePropagationTime(propagationTime);
@@ -195,7 +227,16 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                 propagation.getChanges()
                     .size()));
 
+        long evalStart = System.nanoTime();
+
         addChangeNumbersToEvaluationData(propagation.getChanges());
+
+        long evalEnd = System.nanoTime();
+
+        System.out.println(
+            "Evaluation Data : "
+            + (evalEnd-evalStart)/1_000_000
+            + " ms");
 
         long snapshotStart = System.nanoTime();
 
@@ -217,7 +258,16 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         propagation.setPreviousPcmRepositoryPath(previousRepositoryPath);
 
         // trigger some post propagation hooks
+        long postStart = System.nanoTime();
+
         postPropagationHook();
+
+        long postEnd = System.nanoTime();
+
+        System.out.println(
+            "Post Hook : "
+            + (postEnd-postStart)/1_000_000
+            + " ms");
 
         if (exception != null) {
             switch (getFailureMode()) {
@@ -239,7 +289,16 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                 } // intentional fall through
             case RELOAD:
                 LOGGER.info("Reloading commit integration state");
+                long reloadStart = System.nanoTime();
+
                 reload();
+
+                long reloadEnd = System.nanoTime();
+
+                System.out.println(
+                    "Reload : "
+                    + (reloadEnd-reloadStart)/1_000_000
+                    + " ms");
                 break;
             case CLEAN:
                 try {
@@ -248,7 +307,16 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                     state.getDirLayout()
                         .delete();
                     state.dispose();
+                    long cleanStart = System.nanoTime();
+
                     state.initialize(ci, ci.getRootPath(), true);
+
+                    long cleanEnd = System.nanoTime();
+
+                    System.out.println(
+                        "Clean Initialize : "
+                        + (cleanEnd-cleanStart)/1_000_000
+                        + " ms");
                 } catch (IOException | GitAPIException e) {
                     e.printStackTrace();
                 }
@@ -256,6 +324,15 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
             default:
             }
         }
+
+        long totalEnd = System.nanoTime();
+
+        System.out.println();
+        System.out.println("======================================");
+        System.out.println("TOTAL PROPAGATION : "
+                + (totalEnd-totalStart)/1_000_000
+                + " ms");
+        System.out.println("======================================");
 
         return Optional.of(propagation);
     }
@@ -361,7 +438,28 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                             .getWorkTree()
                             .getAbsolutePath());
 
-            propagations.add(propagateCurrentCheckout());
+            System.out.println();
+            System.out.println("==========================================");
+            System.out.println("Repository : "
+                    + repository.getRepository()
+                            .getDirectory()
+                            .getParentFile()
+                            .getName());
+            System.out.println("==========================================");
+
+            long repoStart = System.nanoTime();
+
+            Optional<Propagation> result = propagateCurrentCheckout();
+
+            long repoEnd = System.nanoTime();
+
+            System.out.println("Repository Total : "
+                    + (repoEnd-repoStart)/1_000_000
+                    + " ms");
+            System.out.println("==========================================");
+            System.out.println();
+
+            propagations.add(result);
         }
 
         return propagations;
@@ -392,6 +490,8 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
             .getChangeStatistic();
         var totalChanges = 0;
 
+        long loopStart = System.nanoTime();
+
         for (var change : changes) {
             var changeCount = change.getOriginalChange()
                 .getEChanges()
@@ -404,6 +504,14 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                 }
             }
         }
+
+        long loopEnd = System.nanoTime();
+
+        System.out.println(
+            "Evaluation Loop : "
+            + (loopEnd-loopStart)/1_000_000
+            + " ms");
+
         cs.setNumberVitruvChanges(totalChanges);
     }
 

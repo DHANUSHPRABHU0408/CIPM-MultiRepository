@@ -58,7 +58,7 @@ public class ApacheCommonsTestController {
     		this.repoIdToRemoteRepository.put("commons-statistics", "https://github.com/apache/commons-statistics");
 
     		this.repoIdToCommitId = new LinkedHashMap<>();
-    		this.repoIdToCommitId.put("commons-cli", "d74613");
+    		this.repoIdToCommitId.put("commons-cli", "e17738b");
     		this.repoIdToCommitId.put("commons-csv", "e14ef8");
     		this.repoIdToCommitId.put("commons-exec", "3ee697");
     		this.repoIdToCommitId.put("commons-statistics", "2937eb");
@@ -68,15 +68,7 @@ public class ApacheCommonsTestController {
     	// getMultiRepositoryWrapper() (called during initialize()) checks that each
     	// repository directory already exists and throws otherwise, so this order
     	// is required on a clean machine.
-    	long prepareStart = System.nanoTime();
-
     	prepareAllRepositories();
-
-    	long prepareEnd = System.nanoTime();
-
-    	System.out.println(
-    	    "Prepare repositories: "
-    	    + (prepareEnd - prepareStart) / 1_000_000 + " ms");
 
         // Create new empty state
         this.apacheCommonsController = new ApacheCommonsCommitIntegration(this.rootPath);
@@ -84,15 +76,7 @@ public class ApacheCommonsTestController {
         // overwrite existing files?
         try {
         	CommitIntegrationSettingsContainer.initialize(Paths.get("apache-commons-exec-files", "settings.properties"));
-        	long initStart = System.nanoTime();
-
         	this.apacheCommonsController.initialize(this.apacheCommonsController);
-
-        	long initEnd = System.nanoTime();
-
-        	System.out.println(
-        	    "Initialization: "
-        	    + (initEnd - initStart) / 1_000_000 + " ms");
         	this.state = this.apacheCommonsController.getState();
         } catch (IOException | GitAPIException e) {
             e.printStackTrace();
@@ -158,16 +142,7 @@ public class ApacheCommonsTestController {
 
     @Test
     public void testApacheCommons() {
-    	System.out.println("*********** MY NEW VERSION IS RUNNING ***********");
-    	long propagationStart = System.nanoTime();
-
     	var results = this.apacheCommonsController.propagateAllRepositories();
-
-    	long propagationEnd = System.nanoTime();
-
-    	System.out.println(
-    	    "Propagation: "
-    	    + (propagationEnd - propagationStart) / 1_000_000 + " ms");
 
     	System.out.println("Repositories processed: " + results.size());
 

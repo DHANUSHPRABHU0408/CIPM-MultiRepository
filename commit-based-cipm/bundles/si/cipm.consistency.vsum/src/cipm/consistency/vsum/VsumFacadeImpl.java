@@ -275,9 +275,25 @@ public class VsumFacadeImpl implements VsumFacade {
         final URI actualtargetUri = targetUri;
 
         // try to resolve all proxies in the resource
+        long t = System.nanoTime();
+
         EcoreUtil.resolveAll(resource);
 
-        if (!checkPropagationPreconditions(resource)) {
+        System.out.println(
+            "Resolve proxies : "
+            + (System.nanoTime() - t) / 1_000_000
+            + " ms");
+
+        t = System.nanoTime();
+
+        boolean ok = checkPropagationPreconditions(resource);
+
+        System.out.println(
+            "Precondition check : "
+            + (System.nanoTime() - t) / 1_000_000
+            + " ms");
+
+        if (!ok) {
             LOGGER.error(
                     String.format("Not propagating resource because of missing preconditions: %s", resource.getURI()));
             return null;
@@ -292,7 +308,14 @@ public class VsumFacadeImpl implements VsumFacade {
             return null;
         }
 
+        t = System.nanoTime();
+
         var view = getChangeDerivingView(vsum);
+
+        System.out.println(
+            "Create view : "
+            + (System.nanoTime() - t) / 1_000_000
+            + " ms");
 //        var newRootEobject = resource.getContents()
 //            .get(0);
 //        
@@ -316,18 +339,42 @@ public class VsumFacadeImpl implements VsumFacade {
 //            view.registerRoot(newRootEobject, targetUri);
 //        }
         
+        t = System.nanoTime();
+
         var roots = view.getRootObjects();
+
         if (!roots.isEmpty()) {
         	var first = roots.iterator().next();
         	first.eResource().getContents().clear();
         }
-        new ArrayList<>(resource.getContents()).forEach(ele -> view.registerRoot(ele, actualtargetUri));
+
+        System.out.println(
+            "Clear old model : "
+            + (System.nanoTime() - t) / 1_000_000
+            + " ms");
+
+        t = System.nanoTime();
+
+        new ArrayList<>(resource.getContents())
+            .forEach(ele -> view.registerRoot(ele, actualtargetUri));
+
+        System.out.println(
+            "Register roots : "
+            + (System.nanoTime() - t) / 1_000_000
+            + " ms");
 
         List<PropagatedChange> changeList = List.of();
         IllegalStateException exception = null;
 
         try {
+            t = System.nanoTime();
+
             changeList = view.commitChangesAndUpdate();
+
+            System.out.println(
+                "commitChangesAndUpdate : "
+                + (System.nanoTime() - t) / 1_000_000
+                + " ms");
         } catch (IllegalStateException e) {
             LOGGER.error(e.getMessage());
             exception = e;
@@ -336,7 +383,14 @@ public class VsumFacadeImpl implements VsumFacade {
         var propagation = new Propagation(changeList);
         propagation.setException(exception);
 
+        t = System.nanoTime();
+
         logPropagatedChanges(resource, propagation);
+
+        System.out.println(
+            "Logging : "
+            + (System.nanoTime() - t) / 1_000_000
+            + " ms");
 
         return propagation;
     }
