@@ -1,7 +1,6 @@
 package cipm.consistency.vsum.test.java;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedHashMap;
@@ -10,9 +9,6 @@ import java.util.Map;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.api.errors.InvalidRemoteException;
 import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -26,128 +22,266 @@ import cipm.consistency.vsum.test.appspace.LoggingSetup;
 import jamopp.resource.JavaResource2Factory;
 import tools.cipm.models.instrumentation.InstrumentationModel.InstrumentationModelPackage;
 
-public class ApacheCommonsTestController {
-	private static final Logger LOGGER = Logger.getLogger(ApacheCommonsTestController.class);
-	private CommitIntegrationState<JavaModelFacade> state;
-	private ApacheCommonsCommitIntegration apacheCommonsController;
-	
-	private Path localRepositoriesDir = Paths.get("target", "apache-commons");
-	private Map<String, String> repoIdToRemoteRepository;
-	private Map<String, String> repoIdToCommitId;
-	private Path rootPath = Paths.get("target", "ApacheCommonsTest");
+public class ApacheCommonsTestController 
+{
+	private CommitIntegrationState<JavaModelFacade> test2State;
+    private static final Logger LOGGER =
+            Logger.getLogger(ApacheCommonsTestController.class);
+
+    private CommitIntegrationState<JavaModelFacade> state;
+    private ApacheCommonsCommitIntegration apacheCommonsController;
+    private ApacheCommonsCommitIntegration test2Controller;
+
+
+    private Path rootPath =
+            Paths.get("target", "ApacheCommonsTest");
+    private Path test2RootPath =
+            Paths.get("target", "ApacheCommonsTest2");
+
+    private Map<String, String> repoIdToCommitId;
+    
 
     /**
-     * 
-     * @param overwrite
-     *            Are existing files (models, etc.) to be deleted before initializing the commit
-     *            integration state?
-     * @throws GitAPIException
-     * @throws IOException
-     * @throws org.eclipse.jgit.api.errors.TransportException
-     * @throws InvalidRemoteException
+     * Setup the commit integration state.
      */
     protected void setup(boolean overwrite) {
-    	if (this.repoIdToRemoteRepository == null) {
-    		// LinkedHashMap preserves insertion order, so repos are always
-    		// processed/cloned/logged in the same order across runs.
-    		this.repoIdToRemoteRepository = new LinkedHashMap<>();
-    		this.repoIdToRemoteRepository.put("commons-cli", "https://github.com/apache/commons-cli");
-    		this.repoIdToRemoteRepository.put("commons-csv", "https://github.com/apache/commons-csv");
-    		this.repoIdToRemoteRepository.put("commons-exec", "https://github.com/apache/commons-exec");
-    		// 
-    		this.repoIdToRemoteRepository.put("commons-statistics", "https://github.com/apache/commons-statistics");
 
-    		this.repoIdToCommitId = new LinkedHashMap<>();
-    		this.repoIdToCommitId.put("commons-cli", "e17738b");
-    		this.repoIdToCommitId.put("commons-csv", "e14ef8");
-    		this.repoIdToCommitId.put("commons-exec", "3ee697");
-    		this.repoIdToCommitId.put("commons-statistics", "2937eb");
-    	}
+        /*
+         * Define which commit should be used for each repository.
+         *
+         * Repository cloning/opening is handled by
+         * ApacheCommonsCommitIntegration.
+         */
+        this.repoIdToCommitId = new LinkedHashMap<>();
 
-    	// Clone/update repositories BEFORE initializing the commit integration state.
-    	// getMultiRepositoryWrapper() (called during initialize()) checks that each
-    	// repository directory already exists and throws otherwise, so this order
-    	// is required on a clean machine.
-    	prepareAllRepositories();
+        this.repoIdToCommitId.put(
+                "commons-cli",
+                "e17738b");
 
-        // Create new empty state
-        this.apacheCommonsController = new ApacheCommonsCommitIntegration(this.rootPath);
+        this.repoIdToCommitId.put(
+                "commons-csv",
+                "e14ef8");
 
-        // overwrite existing files?
+        this.repoIdToCommitId.put(
+                "commons-exec",
+                "b25039f");
+
+        this.repoIdToCommitId.put(
+                "commons-statistics",
+                "2937eb");
+
+        /*
+         * Create the commit integration controller.
+         */
+        this.apacheCommonsController =
+                new ApacheCommonsCommitIntegration(this.rootPath);
+
         try {
-        	CommitIntegrationSettingsContainer.initialize(Paths.get("apache-commons-exec-files", "settings.properties"));
-        	this.apacheCommonsController.initialize(this.apacheCommonsController);
-        	this.state = this.apacheCommonsController.getState();
-        } catch (IOException | GitAPIException e) {
+
+            CommitIntegrationSettingsContainer.initialize(
+                    Paths.get(
+                            "apache-commons-exec-files",
+                            "settings.properties"));
+
+            this.apacheCommonsController.initialize(
+                    this.apacheCommonsController);
+
+            this.state =
+                    this.apacheCommonsController.getState();
+
+        } catch (IOException | org.eclipse.jgit.api.errors.GitAPIException e) {
+
             e.printStackTrace();
-            failTest("Unable to setup commit integration state");
+
+            failTest(
+                    "Unable to setup commit integration state");
         }
     }
 
     @BeforeEach
+    
     public void setup() {
         LoggingSetup.setMinLogLevel(Level.DEBUG);
-        setup(false);
     }
 
     @BeforeAll
     public static void setupStatic() {
-    	Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("java", new JavaResource2Factory());
-    	Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("javaxmi", new JavaResource2Factory());
-    	InstrumentationModelPackage.eINSTANCE.eClass();
+
+        Resource.Factory.Registry.INSTANCE
+                .getExtensionToFactoryMap()
+                .put(
+                        "java",
+                        new JavaResource2Factory());
+
+        Resource.Factory.Registry.INSTANCE
+                .getExtensionToFactoryMap()
+                .put(
+                        "javaxmi",
+                        new JavaResource2Factory());
+
+        InstrumentationModelPackage.eINSTANCE.eClass();
     }
 
     @AfterEach
     public void cleanupAfterTest() {
-        state.dispose();
+
+        if (state != null) {
+            state.dispose();
+        }
+
+        if (test2State != null) {
+            test2State.dispose();
+        }
     }
 
     protected void failTest(String msg) {
+
         LOGGER.error(msg);
+
         Assert.fail(msg);
-    }
-    
-    private void prepareAllRepositories() {
-    	// The following things should be handled by the multi-repository support.
-    	for (Map.Entry<String, String> entry : this.repoIdToRemoteRepository.entrySet()) {
-    		var targetDir = this.localRepositoriesDir.resolve(entry.getKey());
-    		try {
-    			Git git;
-    			if (Files.notExists(targetDir)) {
-					git = Git
-			    		.cloneRepository()
-			    		.setDirectory(targetDir.toFile())
-			    		.setURI(entry.getValue())
-			    		.call();
-    			} else {
-    				git = Git.open(targetDir.toFile());
-    			}
-				git.checkout().setName(this.repoIdToCommitId.get(entry.getKey())).call();
-
-		    	System.out.println("====================================");
-		    	System.out.println("Repository : " + entry.getKey());
-		    	System.out.println("Location   : " + targetDir);
-		    	System.out.println("Commit     : " + this.repoIdToCommitId.get(entry.getKey()));
-		    	System.out.println("HEAD       : " + git.getRepository().resolve("HEAD").name());
-		    	System.out.println("====================================");
-
-		    	git.getRepository().close();
-		    	git.close();
-
-			} catch (IOException | GitAPIException e) {
-				this.failTest(e.getMessage());
-			}
-    	}
     }
 
     @Test
-    public void testApacheCommons() {
-    	var results = this.apacheCommonsController.propagateAllRepositories();
+    public void testApacheCommons() throws Exception {
 
-    	System.out.println("Repositories processed: " + results.size());
+        setup(false);
 
-    	for (int i = 0; i < results.size(); i++) {
-    	    System.out.println("Propagation " + (i + 1) + ": " + results.get(i));
-    	}
+        var results =
+                this.apacheCommonsController
+                        .propagateChanges(repoIdToCommitId);
+
+        Assert.assertEquals(
+                "Expected one result for each repository",
+                repoIdToCommitId.size(),
+                results.size());
+
+        System.out.println(
+                "Repositories processed: " + results.size());
+
+        for (int i = 0; i < results.size(); i++) {
+
+            System.out.println(
+                    "Propagation "
+                    + (i + 1)
+                    + ": "
+                    + results.get(i));
+        }
     }
-}
+  
+    
+    
+    private Map<String, String> createTest2Repositories() {
+
+        Map<String, String> repositories =
+                new LinkedHashMap<>();
+
+        repositories.put(
+                "commons-codec",
+                "https://github.com/apache/commons-cli");
+
+        repositories.put(
+                "commons-lang",
+                "https://github.com/apache/commons-csv");
+
+        repositories.put(
+                "commons-io",
+                "https://github.com/apache/commons-exec");
+
+        repositories.put(
+                "commons-compress",
+                "https://github.com/apache/commons-statistics");
+
+        return repositories;
+    }
+        private Map<String, String> createTest2Commits() {
+
+            Map<String, String> commits =
+                    new LinkedHashMap<>();
+
+            commits.put(
+                    "commons-codec",
+                    "81b5f76");
+
+            commits.put(
+                    "commons-lang",
+                    "7b2f013");
+
+            commits.put(
+                    "commons-io",
+                    "461d834");
+
+            commits.put(
+                    "commons-compress",
+                    "17bf305");
+
+            return commits;
+        }
+        private void setupTest2() throws Exception {
+
+            Map<String, String> repositories =
+                    createTest2Repositories();
+
+            test2Controller =
+                    new ApacheCommonsCommitIntegration(
+                            test2RootPath,
+                            Paths.get(
+                                    "target",
+                                    "apache-commons-test2"),
+                            repositories);
+
+            CommitIntegrationSettingsContainer.initialize(
+                    Paths.get(
+                            "apache-commons-exec-files",
+                            "settings.properties"));
+
+            test2Controller.initialize(
+                    test2Controller);
+
+            test2State =
+                    test2Controller.getState();
+        }
+        
+        @Test
+        public void testApacheCommonsTest2() throws Exception {
+
+            setupTest2();
+
+            var commits =
+                    createTest2Commits();
+
+            System.out.println();
+            System.out.println("========================================");
+            System.out.println("TEST 2 - NEW REPOSITORIES");
+            System.out.println("========================================");
+
+            for (var entry : commits.entrySet()) {
+
+                System.out.println(
+                        entry.getKey()
+                        + " -> "
+                        + entry.getValue());
+            }
+
+            var results =
+                    test2Controller
+                            .propagateChanges(commits);
+
+            Assert.assertEquals(
+                    "Expected one result for each repository",
+                    commits.size(),
+                    results.size());
+
+            System.out.println(
+                    "Repositories processed: "
+                    + results.size());
+
+            for (int i = 0; i < results.size(); i++) {
+
+                System.out.println(
+                        "Propagation "
+                        + (i + 1)
+                        + ": "
+                        + results.get(i));
+            }
+        }
+    }

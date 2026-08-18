@@ -3,6 +3,7 @@ package cipm.consistency.commitintegration;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.commons.io.FileUtils;
@@ -16,12 +17,10 @@ import org.eclipse.jgit.errors.RevisionSyntaxException;
 
 import cipm.consistency.commitintegration.git.GitRepositoryWrapper;
 import cipm.consistency.commitintegration.git.MultiRepositoryWrapper;
-// import cipm.consistency.commitintegration.lang.lua.runtimedata.ChangedResources; // TODO: Check if can be imported again after adding Lua model.
 import cipm.consistency.models.code.CodeModelFacade;
 import cipm.consistency.tools.evaluation.data.EvaluationDataContainer;
 import cipm.consistency.vsum.Propagation;
 import tools.vitruv.change.composite.description.PropagatedChange;
-
 /**
  * This class is responsible for controlling the complete change propagation and adaptive
  * instrumentation.
@@ -85,7 +84,7 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
      * 
      * @return The Propagation instance including the used model paths
      */
-    public Optional<Propagation> propagateCurrentCheckout() {
+    protected Optional<Propagation> propagateCurrentCheckout() {
         long totalStart = System.nanoTime();
 
         // run possible hooks
@@ -129,7 +128,7 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         long parseStart = System.nanoTime();
 
         var resource = state.getCodeModelFacade()
-                .parseSourceCodeDir(workTree);
+                .parseSourceCodeDir(workTree); // todo: support multiple repositories
 
         long parseEnd = System.nanoTime();
 
@@ -367,6 +366,78 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
 
         return Optional.empty();
     }
+    public List<Optional<Propagation>> propagateChanges(
+            Map<String, String> repositoryToCommit)
+            throws GitAPIException, IOException {
+
+        List<Optional<Propagation>> results = new ArrayList<>();
+
+        MultiRepositoryWrapper multiRepositoryWrapper =
+                state.getMultiRepositoryWrapper();
+
+        if (multiRepositoryWrapper == null
+                || multiRepositoryWrapper.isEmpty()) {
+
+            throw new IOException(
+                    "No repositories available for multi-repository propagation.");
+        }
+
+        for (Map.Entry<String, String> entry :
+                repositoryToCommit.entrySet()) {
+
+            String repositoryId = entry.getKey();
+            String commitId = entry.getValue();
+
+            GitRepositoryWrapper repository = null;
+
+            for (GitRepositoryWrapper candidate :
+                    multiRepositoryWrapper.getRepositories()) {
+
+                if (candidate.getWorkTree() != null
+                        && candidate.getWorkTree()
+                                .getName()
+                                .equals(repositoryId)) {
+
+                    repository = candidate;
+                    break;
+                }
+            }
+
+            if (repository == null) {
+                throw new IOException(
+                        "Repository not found: " + repositoryId);
+            }
+
+            LOGGER.info(
+                    "Propagating repository: " + repositoryId);
+            System.out.println(
+                    ">>> STARTING REPOSITORY: " + repositoryId
+                    + " | COMMIT: " + commitId);
+            System.out.println(
+                    "========================================");
+            System.out.println(
+                    "Repository: " + repositoryId);
+            System.out.println(
+                    "Commit: " + commitId);
+            System.out.println(
+                    "========================================");
+            LOGGER.info(
+                    "Target commit: " + commitId);
+
+            // Make this repository the active repository.
+            state.setGitRepositoryWrapper(repository);
+
+            // Use the existing commit-based propagation pipeline.
+            Optional<Propagation> propagation =
+                    propagateChanges(null, commitId);
+            System.out.println(
+                    "Result for " + repositoryId + ": " + propagation);
+
+            results.add(propagation);
+        }
+
+        return results;
+    }
 
     /**
      * Propagates changes for a given list of commitsIds. If no commitIds are given, the current
@@ -404,7 +475,13 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         }
         return allPropagations;
     }
+    protected Optional<Propagation> propagateCurrentCheckout(
+            GitRepositoryWrapper repository) {
+        
+        state.setGitRepositoryWrapper(repository);
 
+        return propagateCurrentCheckout();
+    }
     /**
      * Propagates the current checkout for every repository managed by the commit integration
      * state. For each repository, the state's active {@link GitRepositoryWrapper} is switched to
@@ -419,51 +496,7 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
      * @return a list of {@link Propagation} results, one per repository, in the order the
      *         repositories were processed.
      */
-    public List<Optional<Propagation>> propagateAllRepositories() {
-
-        List<Optional<Propagation>> propagations = new ArrayList<>();
-
-        for (GitRepositoryWrapper repository : state.getGitRepositoryWrappers()) {
-
-            state.setGitRepositoryWrapper(repository);
-
-            LOGGER.info("Processing repository: "
-                    + repository.getRepository()
-                            .getDirectory()
-                            .getParentFile()
-                            .getName());
-
-            LOGGER.info("Repository: "
-                    + repository.getRepository()
-                            .getWorkTree()
-                            .getAbsolutePath());
-
-            System.out.println();
-            System.out.println("==========================================");
-            System.out.println("Repository : "
-                    + repository.getRepository()
-                            .getDirectory()
-                            .getParentFile()
-                            .getName());
-            System.out.println("==========================================");
-
-            long repoStart = System.nanoTime();
-
-            Optional<Propagation> result = propagateCurrentCheckout();
-
-            long repoEnd = System.nanoTime();
-
-            System.out.println("Repository Total : "
-                    + (repoEnd-repoStart)/1_000_000
-                    + " ms");
-            System.out.println("==========================================");
-            System.out.println();
-
-            propagations.add(result);
-        }
-
-        return propagations;
-    }
+    
 
     protected boolean prePropagationChecks(String firstCommitId, String secondCommitId) {
         if (firstCommitId != null) {
@@ -552,9 +585,11 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         }
         return false;
     }
+    
 
     private CommitIntegrationFailureMode getFailureMode() {
         return state.getCommitIntegration()
             .getFailureMode();
     }
+    
 }
