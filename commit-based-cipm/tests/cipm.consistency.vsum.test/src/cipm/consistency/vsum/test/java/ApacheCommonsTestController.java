@@ -1,6 +1,14 @@
 package cipm.consistency.vsum.test.java;
 
 import java.io.IOException;
+import java.io.BufferedWriter;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+
+import org.eclipse.jgit.revwalk.RevCommit;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedHashMap;
@@ -22,21 +30,19 @@ import cipm.consistency.vsum.test.appspace.LoggingSetup;
 import jamopp.resource.JavaResource2Factory;
 import tools.cipm.models.instrumentation.InstrumentationModel.InstrumentationModelPackage;
 
+
 public class ApacheCommonsTestController 
 {
-	private CommitIntegrationState<JavaModelFacade> test2State;
     private static final Logger LOGGER =
             Logger.getLogger(ApacheCommonsTestController.class);
 
     private CommitIntegrationState<JavaModelFacade> state;
     private ApacheCommonsCommitIntegration apacheCommonsController;
-    private ApacheCommonsCommitIntegration test2Controller;
 
-
+    private static final Path PERFORMANCE_CSV =
+            Paths.get("target", "performance-results.csv");
     private Path rootPath =
             Paths.get("target", "ApacheCommonsTest");
-    private Path test2RootPath =
-            Paths.get("target", "ApacheCommonsTest2");
 
     private Map<String, String> repoIdToCommitId;
     
@@ -128,10 +134,6 @@ public class ApacheCommonsTestController
         if (state != null) {
             state.dispose();
         }
-
-        if (test2State != null) {
-            test2State.dispose();
-        }
     }
 
     protected void failTest(String msg) {
@@ -144,144 +146,286 @@ public class ApacheCommonsTestController
     @Test
     public void testApacheCommons() throws Exception {
 
-        setup(false);
+        initializePerformanceCsv();
+
+        Map<String, String> commits =
+                new LinkedHashMap<>();
+
+        commits.put(
+                "commons-cli",
+                "0a68ae0");
+
+        commits.put(
+                "commons-csv",
+                "d9b9f06");
+
+        commits.put(
+                "commons-exec",
+                "1f5061b");
+
+        commits.put(
+                "commons-statistics",
+                "b101916");
+
+        runPerformanceTest(
+                "Test Case 1",
+                commits,
+                Paths.get(
+                        "target",
+                        "ApacheCommonsTest1"));
+    }
+    
+    @Test
+    public void testApacheCommonsTest2() throws Exception {
+
+        initializePerformanceCsv();
+
+        Map<String, String> commits =
+                new LinkedHashMap<>();
+
+        commits.put(
+                "commons-cli",
+                "c9e543d");
+
+        commits.put(
+                "commons-csv",
+                "c3844a2");
+
+        commits.put(
+                "commons-exec",
+                "92d9943");
+
+        commits.put(
+                "commons-statistics",
+                "d390942");
+
+        runPerformanceTest(
+                "Test Case 2",
+                commits,
+                Paths.get(
+                        "target",
+                        "ApacheCommonsTest2"));
+    }
+    
+    @Test
+    public void testApacheCommonsTest3() throws Exception {
+
+        initializePerformanceCsv();
+
+        Map<String, String> commits =
+                new LinkedHashMap<>();
+
+        commits.put(
+                "commons-cli",
+                "6dadc46");
+
+        commits.put(
+                "commons-csv",
+                "e0e80b4");
+
+        commits.put(
+                "commons-exec",
+                "513fa7a");
+
+        commits.put(
+                "commons-statistics",
+                "6737df3");
+
+        runPerformanceTest(
+                "Test Case 3",
+                commits,
+                Paths.get(
+                        "target",
+                        "ApacheCommonsTest3"));
+    }
+    
+    
+    private void initializePerformanceCsv() throws IOException {
+
+        Files.createDirectories(
+                PERFORMANCE_CSV.getParent());
+
+        if (Files.exists(PERFORMANCE_CSV)) {
+            return;
+        }
+
+        try (BufferedWriter writer =
+                Files.newBufferedWriter(
+                        PERFORMANCE_CSV,
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.WRITE)) {
+
+        	writer.write(
+        	        "Test Case,Repository,Commit ID,Commit Date,"
+        	        + "Commit Size (Java LOC),"
+        	        + "Total Commit Size (Test Case),"
+        	        + "Total VSUM Propagation (ms),"
+        	        + "Total Test Case Runtime (ms)");
+
+            writer.newLine();
+        }
+    }
+    private void writePerformanceRow(
+            String testCaseName,
+            String repositoryName,
+            String commitId,
+            RevCommit commit,
+            long commitSize,
+            long totalCommitSize,
+            long totalVsumTime,
+            long totalTestCaseRuntime)
+            throws IOException {
+
+        String commitDate =
+                commit.getCommitterIdent()
+                        .getWhen()
+                        .toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDateTime()
+                        .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+
+        try (BufferedWriter writer =
+                Files.newBufferedWriter(
+                        PERFORMANCE_CSV,
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.APPEND)) {
+
+        	writer.write(
+        	        testCaseName + ","
+        	        + repositoryName + ","
+        	        + commitId + ","
+        	        + commitDate + ","
+        	        + commitSize + ","
+        	        + totalCommitSize + ","
+        	        + totalVsumTime + ","
+        	        + totalTestCaseRuntime);
+
+            writer.newLine();
+        }
+    }
+    private void runPerformanceTest(
+            String testCaseName,
+            Map<String, String> commits,
+            Path testRoot)
+            throws Exception {
+
+        this.repoIdToCommitId = new LinkedHashMap<>(commits);
+
+        this.apacheCommonsController =
+                new ApacheCommonsCommitIntegration(testRoot);
+
+        CommitIntegrationSettingsContainer.initialize(
+                Paths.get(
+                        "apache-commons-exec-files",
+                        "settings.properties"));
+
+        this.apacheCommonsController.initialize(
+                this.apacheCommonsController);
+
+        this.state =
+                this.apacheCommonsController.getState();
+
+        long testCaseStart = System.nanoTime();
 
         var results =
                 this.apacheCommonsController
-                        .propagateChanges(repoIdToCommitId);
+                        .propagateChanges(commits);
+
+        long testCaseEnd = System.nanoTime();
+
+        long totalTestCaseRuntime =
+                (testCaseEnd - testCaseStart) / 1_000_000;
 
         Assert.assertEquals(
                 "Expected one result for each repository",
-                repoIdToCommitId.size(),
+                commits.size(),
                 results.size());
 
-        System.out.println(
-                "Repositories processed: " + results.size());
+        var timings =
+                this.apacheCommonsController
+                        .getLastRepositoryPropagationTimes();
 
-        for (int i = 0; i < results.size(); i++) {
+        long totalVsumPropagation = 0;
+        for (long[] timing : timings.values()) {
 
-            System.out.println(
-                    "Propagation "
-                    + (i + 1)
-                    + ": "
-                    + results.get(i));
+            totalVsumPropagation += timing[0];
         }
-    }
-  
-    
-    
-    private Map<String, String> createTest2Repositories() {
-
-        Map<String, String> repositories =
+        var repositories =
+                this.apacheCommonsController
+                        .getMultiRepositoryWrapper()
+                        .getRepositories();
+        Map<String, Long> commitSizes =
                 new LinkedHashMap<>();
 
-        repositories.put(
-                "commons-codec",
-                "https://github.com/apache/commons-cli");
+        long totalCommitSize = 0;
 
-        repositories.put(
-                "commons-lang",
-                "https://github.com/apache/commons-csv");
+        for (var repository : repositories) {
 
-        repositories.put(
-                "commons-io",
-                "https://github.com/apache/commons-exec");
+            String repositoryName =
+                    repository.getWorkTree().getName();
 
-        repositories.put(
-                "commons-compress",
-                "https://github.com/apache/commons-statistics");
+            String commitId =
+                    commits.get(repositoryName);
 
-        return repositories;
-    }
-        private Map<String, String> createTest2Commits() {
-
-            Map<String, String> commits =
-                    new LinkedHashMap<>();
-
-            commits.put(
-                    "commons-codec",
-                    "81b5f76");
-
-            commits.put(
-                    "commons-lang",
-                    "7b2f013");
-
-            commits.put(
-                    "commons-io",
-                    "461d834");
-
-            commits.put(
-                    "commons-compress",
-                    "17bf305");
-
-            return commits;
-        }
-        private void setupTest2() throws Exception {
-
-            Map<String, String> repositories =
-                    createTest2Repositories();
-
-            test2Controller =
-                    new ApacheCommonsCommitIntegration(
-                            test2RootPath,
-                            Paths.get(
-                                    "target",
-                                    "apache-commons-test2"),
-                            repositories);
-
-            CommitIntegrationSettingsContainer.initialize(
-                    Paths.get(
-                            "apache-commons-exec-files",
-                            "settings.properties"));
-
-            test2Controller.initialize(
-                    test2Controller);
-
-            test2State =
-                    test2Controller.getState();
-        }
-        
-        @Test
-        public void testApacheCommonsTest2() throws Exception {
-
-            setupTest2();
-
-            var commits =
-                    createTest2Commits();
-
-            System.out.println();
-            System.out.println("========================================");
-            System.out.println("TEST 2 - NEW REPOSITORIES");
-            System.out.println("========================================");
-
-            for (var entry : commits.entrySet()) {
-
-                System.out.println(
-                        entry.getKey()
-                        + " -> "
-                        + entry.getValue());
+            if (commitId == null) {
+                throw new IllegalStateException(
+                        "No commit configured for "
+                        + repositoryName);
             }
 
-            var results =
-                    test2Controller
-                            .propagateChanges(commits);
+            long commitSize =
+                    repository.getJavaSourceLineCount(commitId);
 
-            Assert.assertEquals(
-                    "Expected one result for each repository",
-                    commits.size(),
-                    results.size());
+            commitSizes.put(
+                    repositoryName,
+                    commitSize);
 
-            System.out.println(
-                    "Repositories processed: "
-                    + results.size());
-
-            for (int i = 0; i < results.size(); i++) {
-
-                System.out.println(
-                        "Propagation "
-                        + (i + 1)
-                        + ": "
-                        + results.get(i));
-            }
+            totalCommitSize += commitSize;
         }
+
+        for (var repository : repositories) {
+
+            String repositoryName =
+                    repository.getWorkTree().getName();
+
+            String commitId =
+                    commits.get(repositoryName);
+
+            if (commitId == null) {
+                throw new IllegalStateException(
+                        "No commit configured for "
+                        + repositoryName);
+            }
+
+            long[] timing =
+                    timings.get(repositoryName);
+
+            if (timing == null) {
+                throw new IllegalStateException(
+                        "No timing data for "
+                        + repositoryName);
+            }
+
+            RevCommit commit =
+                    repository.getCommitForId(commitId);
+
+            long commitSize =
+                    commitSizes.get(repositoryName);
+
+            writePerformanceRow(
+                    testCaseName,
+                    repositoryName,
+                    commitId,
+                    commit,
+                    commitSize,
+                    totalCommitSize,
+                    totalVsumPropagation,
+                    totalTestCaseRuntime);
+        }
+
+        System.out.println(
+                testCaseName
+                + " completed. Repositories processed: "
+                + results.size());
     }
+}

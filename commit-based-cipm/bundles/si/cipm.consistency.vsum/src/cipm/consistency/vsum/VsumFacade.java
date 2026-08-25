@@ -17,6 +17,7 @@ import tools.vitruv.framework.vsum.internal.InternalVirtualModel;
 
 @SuppressWarnings("restriction")
 public interface VsumFacade {
+	
 
     void initialize(Path rootPath, List<ModelFacade> models, List<ChangePropagationSpecification> changeSpecs,
             StateBasedChangeResolutionStrategy stateBasedChangeResolutionStrategy) throws IOException;
@@ -54,6 +55,7 @@ public interface VsumFacade {
      * @return The propagated changes
      */
     Propagation propagateResource(Resource resource, URI targetUri);
+    
 
     InternalVirtualModel getVsum();
 

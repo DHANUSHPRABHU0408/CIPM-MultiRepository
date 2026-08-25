@@ -34,7 +34,12 @@ import tools.vitruv.change.composite.description.PropagatedChange;
 public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
     private static final Logger LOGGER = Logger.getLogger(CommitIntegrationController.class.getName());
     protected CommitIntegrationState<CM> state;
-
+    private final Map<String, long[]> lastRepositoryPropagationTimes =
+            new java.util.LinkedHashMap<>();
+    public Map<String, long[]> getLastRepositoryPropagationTimes() {
+        return new java.util.LinkedHashMap<>(
+                lastRepositoryPropagationTimes);
+    }
     public void initialize(CommitIntegration<CM> commitIntegration)
             throws InvalidRemoteException, TransportException, IOException, GitAPIException {
         state = new CommitIntegrationState<CM>();
@@ -326,10 +331,17 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
 
         long totalEnd = System.nanoTime();
 
+        long totalPropagationTime =
+                (totalEnd - totalStart) / 1_000_000;
+
+        EvaluationDataContainer.get()
+                .getExecutionTimes()
+                .setOverallTime(totalPropagationTime);
+
         System.out.println();
         System.out.println("======================================");
         System.out.println("TOTAL PROPAGATION : "
-                + (totalEnd-totalStart)/1_000_000
+                + totalPropagationTime
                 + " ms");
         System.out.println("======================================");
 
@@ -371,6 +383,7 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
             throws GitAPIException, IOException {
 
         List<Optional<Propagation>> results = new ArrayList<>();
+        lastRepositoryPropagationTimes.clear();
 
         MultiRepositoryWrapper multiRepositoryWrapper =
                 state.getMultiRepositoryWrapper();
@@ -430,6 +443,42 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
             // Use the existing commit-based propagation pipeline.
             Optional<Propagation> propagation =
                     propagateChanges(null, commitId);
+
+            if (propagation.isPresent()) {
+
+                long vsumPropagationTime =
+                        EvaluationDataContainer.get()
+                                .getExecutionTimes()
+                                .getChangePropagationTime();
+
+                long totalPropagationTime =
+                        EvaluationDataContainer.get()
+                                .getExecutionTimes()
+                                .getOverallTime();
+
+                lastRepositoryPropagationTimes.put(
+                        repositoryId,
+                        new long[] {
+                                vsumPropagationTime,
+                                totalPropagationTime
+                        });
+
+            } else {
+
+                LOGGER.info(
+                        "No propagation performed for repository: "
+                        + repositoryId
+                        + " commit: "
+                        + commitId);
+
+                lastRepositoryPropagationTimes.put(
+                        repositoryId,
+                        new long[] {
+                                0L,
+                                0L
+                        });
+            }
+
             System.out.println(
                     "Result for " + repositoryId + ": " + propagation);
 
