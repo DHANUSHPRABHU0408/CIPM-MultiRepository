@@ -14,12 +14,14 @@ import org.eclipse.jgit.api.errors.TransportException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.RevisionSyntaxException;
+import cipm.consistency.commitintegration.PropagationTimingProvider;
 
 import cipm.consistency.commitintegration.git.GitRepositoryWrapper;
 import cipm.consistency.commitintegration.git.MultiRepositoryWrapper;
 import cipm.consistency.models.code.CodeModelFacade;
 import cipm.consistency.tools.evaluation.data.EvaluationDataContainer;
 import cipm.consistency.vsum.Propagation;
+import tools.vitruv.change.propagation.ChangePropagationSpecification;
 import tools.vitruv.change.composite.description.PropagatedChange;
 /**
  * This class is responsible for controlling the complete change propagation and adaptive
@@ -36,10 +38,22 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
     protected CommitIntegrationState<CM> state;
     private final Map<String, long[]> lastRepositoryPropagationTimes =
             new java.util.LinkedHashMap<>();
+    private final Map<String,
+    List<PropagationTimingProvider.PropagationTiming>>
+    lastRepositoryPropagationTimings =
+    new java.util.LinkedHashMap<>();
+    
     public Map<String, long[]> getLastRepositoryPropagationTimes() {
         return new java.util.LinkedHashMap<>(
                 lastRepositoryPropagationTimes);
     }
+    public Map<String,
+    List<PropagationTimingProvider.PropagationTiming>>
+    getLastRepositoryPropagationTimings() {
+
+return new java.util.LinkedHashMap<>(
+        lastRepositoryPropagationTimings);
+}
     public void initialize(CommitIntegration<CM> commitIntegration)
             throws InvalidRemoteException, TransportException, IOException, GitAPIException {
         state = new CommitIntegrationState<CM>();
@@ -382,9 +396,11 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
             Map<String, String> repositoryToCommit)
             throws GitAPIException, IOException {
 
-        List<Optional<Propagation>> results = new ArrayList<>();
-        lastRepositoryPropagationTimes.clear();
-
+    	List<Optional<Propagation>> results = new ArrayList<>();
+    	
+    	lastRepositoryPropagationTimes.clear();
+    	lastRepositoryPropagationTimings.clear();
+    	
         MultiRepositoryWrapper multiRepositoryWrapper =
                 state.getMultiRepositoryWrapper();
 
@@ -437,12 +453,35 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
             LOGGER.info(
                     "Target commit: " + commitId);
 
-            // Make this repository the active repository.
+         // Make this repository the active repository.
             state.setGitRepositoryWrapper(repository);
+
+            PropagationTimingProvider timingProvider = null;
+
+            for (ChangePropagationSpecification spec :
+                    state.getCommitIntegration().getChangeSpecs()) {
+
+                if (spec instanceof PropagationTimingProvider) {
+                    timingProvider = (PropagationTimingProvider) spec;
+                    break;
+                }
+            }
+
+            if (timingProvider == null) {
+                throw new IllegalStateException(
+                        "No propagation timing provider found.");
+            }
+
+            timingProvider.clearPropagationTimings();
 
             // Use the existing commit-based propagation pipeline.
             Optional<Propagation> propagation =
                     propagateChanges(null, commitId);
+            lastRepositoryPropagationTimings.put(
+                    repositoryId,
+                    timingProvider.getPropagationTimings()); 
+            
+            
 
             if (propagation.isPresent()) {
 
@@ -456,11 +495,21 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                                 .getExecutionTimes()
                                 .getOverallTime();
 
+                long generateChangeTime =
+                        state.getVsumFacade()
+                                .getLastGenerateChangeTime();
+
+                long propagatedChangesTime =
+                        state.getVsumFacade()
+                                .getLastPropagatedChangesTime();
+
                 lastRepositoryPropagationTimes.put(
                         repositoryId,
                         new long[] {
                                 vsumPropagationTime,
-                                totalPropagationTime
+                                totalPropagationTime,
+                                generateChangeTime,
+                                propagatedChangesTime
                         });
 
             } else {
@@ -475,8 +524,13 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                         repositoryId,
                         new long[] {
                                 0L,
+                                0L,
+                                0L,
                                 0L
                         });
+                lastRepositoryPropagationTimings.put(
+                        repositoryId,
+                        List.of());  
             }
 
             System.out.println(
@@ -640,5 +694,6 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         return state.getCommitIntegration()
             .getFailureMode();
     }
+    
     
 }

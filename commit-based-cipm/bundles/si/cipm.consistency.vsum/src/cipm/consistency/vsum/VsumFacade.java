@@ -1,6 +1,7 @@
 package cipm.consistency.vsum;
 
 import java.io.IOException;
+
 import java.nio.file.Path;
 import java.util.List;
 
@@ -8,6 +9,7 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 
 import cipm.consistency.models.ModelFacade;
+
 import tools.vitruv.change.correspondence.Correspondence;
 import tools.vitruv.change.correspondence.view.EditableCorrespondenceModelView;
 import tools.vitruv.change.propagation.ChangePropagationSpecification;
@@ -55,6 +57,9 @@ public interface VsumFacade {
      * @return The propagated changes
      */
     Propagation propagateResource(Resource resource, URI targetUri);
+    long getLastGenerateChangeTime();
+
+    long getLastPropagatedChangesTime(); 
     
 
     InternalVirtualModel getVsum();

@@ -4,13 +4,14 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.apache.log4j.Logger;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+
 //import org.xtext.lua.lua.ComponentSet;
 import org.emftext.language.java.containers.JavaRoot;
+import tools.vitruv.framework.views.TimedCommittableView;
 
 import tools.cipm.models.instrumentation.InstrumentationModel.InstrumentationModel;
 import cipm.consistency.models.ModelFacade;
@@ -39,6 +40,9 @@ public class VsumFacadeImpl implements VsumFacade {
     private List<ChangePropagationSpecification> changeSpecs;
     private InternalVirtualModel vsum;
     private StateBasedChangeResolutionStrategy stateBasedChangeResolutionStrategy;
+    private long lastGenerateChangeTime;
+    private long lastPropagatedChangesTime;
+    
 
     private List<ModelFacade> models;
 
@@ -110,7 +114,8 @@ public class VsumFacadeImpl implements VsumFacade {
         getChangeDerivingView(vsum);
     }
 
-    private CommittableView getChangeDerivingView(InternalVirtualModel theVsum) {
+    private TimedCommittableView getChangeDerivingView(
+            InternalVirtualModel theVsum) {
         var viewType = ViewTypeFactory.createIdentityMappingViewType("myView");
         var viewSelector = viewType.createSelector(theVsum);
 
@@ -126,9 +131,10 @@ public class VsumFacadeImpl implements VsumFacade {
             });
 
         var view = viewSelector.createView()
-            .withChangeDerivingTrait(stateBasedChangeResolutionStrategy);
+                .withChangeDerivingTrait(
+                        stateBasedChangeResolutionStrategy);
 
-        return view;
+        return (TimedCommittableView) view;
     }
 
     public CommittableView getChangeRecordingView() {
@@ -367,14 +373,34 @@ public class VsumFacadeImpl implements VsumFacade {
         IllegalStateException exception = null;
 
         try {
+            lastGenerateChangeTime = 0;
+            lastPropagatedChangesTime = 0;
+
             t = System.nanoTime();
 
             changeList = view.commitChangesAndUpdate();
+
+            lastGenerateChangeTime =
+                    view.getGenerateChangeTimeMs();
+
+            lastPropagatedChangesTime =
+                    view.getPropagatedChangesTimeMs();
 
             System.out.println(
                 "commitChangesAndUpdate : "
                 + (System.nanoTime() - t) / 1_000_000
                 + " ms");
+
+            System.out.println(
+                "Generate Change : "
+                + lastGenerateChangeTime
+                + " ms");
+
+            System.out.println(
+                "Propagated Changes : "
+                + lastPropagatedChangesTime
+                + " ms");
+
         } catch (IllegalStateException e) {
             LOGGER.error(e.getMessage());
             exception = e;
@@ -419,5 +445,16 @@ public class VsumFacadeImpl implements VsumFacade {
         }
         return null;
     }
+    @Override
+    public long getLastGenerateChangeTime() {
+        return lastGenerateChangeTime;
+    }
 
+    @Override
+    public long getLastPropagatedChangesTime() {
+        return lastPropagatedChangesTime;
+    }
+    
+    
+    
 }

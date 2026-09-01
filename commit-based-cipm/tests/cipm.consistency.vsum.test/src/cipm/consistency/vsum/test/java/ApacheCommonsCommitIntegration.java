@@ -37,6 +37,7 @@ public class ApacheCommonsCommitIntegration extends JavaCommitIntegration {
 	private final Map<String, String> remoteRepositories;
 	// cached so repositories aren't rebuilt/reinitialized on every call
 	private MultiRepositoryWrapper multiRepositoryWrapper;
+	private CommitIntegrationJavaPCMChangePropagationSpecification javaPcmSpec;
 	
 	public ApacheCommonsCommitIntegration(
 	        Path root,
@@ -64,7 +65,10 @@ public class ApacheCommonsCommitIntegration extends JavaCommitIntegration {
 	            "https://github.com/apache/commons-exec",
 
 	            "commons-statistics",
-	            "https://github.com/apache/commons-statistics"
+	            "https://github.com/apache/commons-statistics",
+	            
+	            "commons-bcel",
+	            "https://github.com/apache/commons-bcel"
 	        )
 	    );
 	}
@@ -95,10 +99,23 @@ public class ApacheCommonsCommitIntegration extends JavaCommitIntegration {
 
 	@Override
 	protected List<ChangePropagationSpecification> getJavaToPCMSpecs() {
-		return List.of(
-			new CommitIntegrationJavaPCMChangePropagationSpecification()
-		);
+
+	    if (javaPcmSpec == null) {
+	        javaPcmSpec =
+	                new CommitIntegrationJavaPCMChangePropagationSpecification();
+	    }
+
+	    return List.of(javaPcmSpec);
 	}
+	public CommitIntegrationJavaPCMChangePropagationSpecification
+    getJavaPcmChangePropagationSpecification() {
+
+if (javaPcmSpec == null) {
+    getJavaToPCMSpecs();
+}
+
+return javaPcmSpec;
+}
 	
 	@Override
 	public void initialize(CommitIntegration<JavaModelFacade> commitIntegration)
