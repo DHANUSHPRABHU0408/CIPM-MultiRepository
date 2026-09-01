@@ -3,6 +3,7 @@ package cipm.consistency.commitintegration;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.commons.io.FileUtils;
@@ -13,14 +14,15 @@ import org.eclipse.jgit.api.errors.TransportException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.RevisionSyntaxException;
+import cipm.consistency.commitintegration.PropagationTimingProvider;
 
-// import cipm.consistency.commitintegration.lang.lua.runtimedata.ChangedResources; // TODO: Check if can be imported again after adding Lua model.
+import cipm.consistency.commitintegration.git.GitRepositoryWrapper;
+import cipm.consistency.commitintegration.git.MultiRepositoryWrapper;
 import cipm.consistency.models.code.CodeModelFacade;
 import cipm.consistency.tools.evaluation.data.EvaluationDataContainer;
 import cipm.consistency.vsum.Propagation;
-import cipm.consistency.commitintegration.git.GitRepositoryWrapper;
+import tools.vitruv.change.propagation.ChangePropagationSpecification;
 import tools.vitruv.change.composite.description.PropagatedChange;
-
 /**
  * This class is responsible for controlling the complete change propagation and adaptive
  * instrumentation.
@@ -34,7 +36,24 @@ import tools.vitruv.change.composite.description.PropagatedChange;
 public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
     private static final Logger LOGGER = Logger.getLogger(CommitIntegrationController.class.getName());
     protected CommitIntegrationState<CM> state;
+    private final Map<String, long[]> lastRepositoryPropagationTimes =
+            new java.util.LinkedHashMap<>();
+    private final Map<String,
+    List<PropagationTimingProvider.PropagationTiming>>
+    lastRepositoryPropagationTimings =
+    new java.util.LinkedHashMap<>();
+    
+    public Map<String, long[]> getLastRepositoryPropagationTimes() {
+        return new java.util.LinkedHashMap<>(
+                lastRepositoryPropagationTimes);
+    }
+    public Map<String,
+    List<PropagationTimingProvider.PropagationTiming>>
+    getLastRepositoryPropagationTimings() {
 
+return new java.util.LinkedHashMap<>(
+        lastRepositoryPropagationTimings);
+}
     public void initialize(CommitIntegration<CM> commitIntegration)
             throws InvalidRemoteException, TransportException, IOException, GitAPIException {
         state = new CommitIntegrationState<CM>();
@@ -84,9 +103,20 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
      * 
      * @return The Propagation instance including the used model paths
      */
-    public Optional<Propagation> propagateCurrentCheckout() {
+    protected Optional<Propagation> propagateCurrentCheckout() {
+        long totalStart = System.nanoTime();
+
         // run possible hooks
+        long preHookStart = System.nanoTime();
+
         prePropagationHook();
+
+        long preHookEnd = System.nanoTime();
+
+        System.out.println(
+            "Pre Hook : "
+            + (preHookEnd-preHookStart)/1_000_000
+            + " ms");
 
         LOGGER.info(String.format("\n\tPropagating commit #%d: %s", state.getSnapshotCount() + 1,
                 state.getGitRepositoryWrapper()
@@ -94,9 +124,18 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
 
         var previousParsedModelPath = state.getCurrentParsedModelPath();
 
+        long workTreeStart = System.nanoTime();
+
         var workTree = state.getGitRepositoryWrapper()
             .getWorkTree()
             .toPath();
+
+        long workTreeEnd = System.nanoTime();
+
+        System.out.println(
+            "Get WorkTree : "
+            + (workTreeEnd-workTreeStart)/1_000_000
+            + " ms");
 
         LOGGER.info("WorkTree = " + workTree);
         LOGGER.info("Parent   = " + workTree.getParent());
@@ -105,10 +144,27 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         // a single, SHARED VsumFacade/PCM model across all repositories (Option A / shared-VSUM
         // design) - each repository's parsed code model is propagated into the same VSUM in
         // sequence, rather than each repository getting its own isolated VSUM.
+        long parseStart = System.nanoTime();
+
         var resource = state.getCodeModelFacade()
-            .parseSourceCodeDir(workTree);
+                .parseSourceCodeDir(workTree); // todo: support multiple repositories
+
+        long parseEnd = System.nanoTime();
+
+        System.out.println(
+            "Java parsing: "
+            + (parseEnd - parseStart) / 1_000_000
+            + " ms");
         if (resource == null) {
             LOGGER.error("Error parsing code model, not running propagation");
+
+            long totalEnd = System.nanoTime();
+
+            System.out.println(
+                "TOTAL PROPAGATION : "
+                + (totalEnd-totalStart)/1_000_000
+                + " ms");
+
             return Optional.empty();
         }
 
@@ -119,8 +175,26 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         // reset evaluation data regarding the im update
         EvaluationDataContainer.get().resetImUpdateEval();
 
+        long repoSnapshotStart = System.nanoTime();
+
         var previousRepositoryPath = state.createRepositorySnapshot();
+
+        long repoSnapshotEnd = System.nanoTime();
+
+        System.out.println(
+            "Repository snapshot: "
+            + (repoSnapshotEnd - repoSnapshotStart)/1_000_000
+            + " ms");
+        long parsedSnapshotStart = System.nanoTime();
+
         var parsedModelPath = state.createParsedCodeModelSnapshot();
+
+        long parsedSnapshotEnd = System.nanoTime();
+
+        System.out.println(
+            "Parsed model snapshot: "
+            + (parsedSnapshotEnd - parsedSnapshotStart)/1_000_000
+            + " ms");
         state.setCurrentParsedModelPath(parsedModelPath);
 
         // DIAGNOSTIC: verify the shared PCM model is accumulating content across repositories
@@ -133,14 +207,21 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                     snapshotSizeBytes, previousRepositoryPath));
         }
 
-        long propagationTime = System.currentTimeMillis();
+        long propagationStart = System.nanoTime();
 
         // the actual propagation is done here
         var propagation = state.getVsumFacade()
             .propagateResource(resource, state.getDirLayout()
                 .getVsumCodeModelURI());
 
-        propagationTime = System.currentTimeMillis() - propagationTime;
+        long propagationEnd = System.nanoTime();
+
+        long propagationTime = (propagationEnd-propagationStart)/1_000_000;
+
+        System.out.println(
+            "VSUM propagation : "
+            + propagationTime
+            + " ms");
         EvaluationDataContainer.get()
             .getExecutionTimes()
             .setChangePropagationTime(propagationTime);
@@ -164,9 +245,27 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                 propagation.getChanges()
                     .size()));
 
+        long evalStart = System.nanoTime();
+
         addChangeNumbersToEvaluationData(propagation.getChanges());
 
+        long evalEnd = System.nanoTime();
+
+        System.out.println(
+            "Evaluation Data : "
+            + (evalEnd-evalStart)/1_000_000
+            + " ms");
+
+        long snapshotStart = System.nanoTime();
+
         var snapshotPath = state.createSnapshot();
+
+        long snapshotEnd = System.nanoTime();
+
+        System.out.println(
+            "Final snapshot: "
+            + (snapshotEnd - snapshotStart)/1_000_000
+            + " ms");
 
         // add some information needed for the evaluation to the propagation object
         propagation.setCommitIntegrationStateSnapshotPath(snapshotPath);
@@ -177,7 +276,16 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         propagation.setPreviousPcmRepositoryPath(previousRepositoryPath);
 
         // trigger some post propagation hooks
+        long postStart = System.nanoTime();
+
         postPropagationHook();
+
+        long postEnd = System.nanoTime();
+
+        System.out.println(
+            "Post Hook : "
+            + (postEnd-postStart)/1_000_000
+            + " ms");
 
         if (exception != null) {
             switch (getFailureMode()) {
@@ -199,7 +307,16 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                 } // intentional fall through
             case RELOAD:
                 LOGGER.info("Reloading commit integration state");
+                long reloadStart = System.nanoTime();
+
                 reload();
+
+                long reloadEnd = System.nanoTime();
+
+                System.out.println(
+                    "Reload : "
+                    + (reloadEnd-reloadStart)/1_000_000
+                    + " ms");
                 break;
             case CLEAN:
                 try {
@@ -208,7 +325,16 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                     state.getDirLayout()
                         .delete();
                     state.dispose();
+                    long cleanStart = System.nanoTime();
+
                     state.initialize(ci, ci.getRootPath(), true);
+
+                    long cleanEnd = System.nanoTime();
+
+                    System.out.println(
+                        "Clean Initialize : "
+                        + (cleanEnd-cleanStart)/1_000_000
+                        + " ms");
                 } catch (IOException | GitAPIException e) {
                     e.printStackTrace();
                 }
@@ -216,6 +342,22 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
             default:
             }
         }
+
+        long totalEnd = System.nanoTime();
+
+        long totalPropagationTime =
+                (totalEnd - totalStart) / 1_000_000;
+
+        EvaluationDataContainer.get()
+                .getExecutionTimes()
+                .setOverallTime(totalPropagationTime);
+
+        System.out.println();
+        System.out.println("======================================");
+        System.out.println("TOTAL PROPAGATION : "
+                + totalPropagationTime
+                + " ms");
+        System.out.println("======================================");
 
         return Optional.of(propagation);
     }
@@ -249,6 +391,155 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         }
 
         return Optional.empty();
+    }
+    public List<Optional<Propagation>> propagateChanges(
+            Map<String, String> repositoryToCommit)
+            throws GitAPIException, IOException {
+
+    	List<Optional<Propagation>> results = new ArrayList<>();
+    	
+    	lastRepositoryPropagationTimes.clear();
+    	lastRepositoryPropagationTimings.clear();
+    	
+        MultiRepositoryWrapper multiRepositoryWrapper =
+                state.getMultiRepositoryWrapper();
+
+        if (multiRepositoryWrapper == null
+                || multiRepositoryWrapper.isEmpty()) {
+
+            throw new IOException(
+                    "No repositories available for multi-repository propagation.");
+        }
+
+        for (Map.Entry<String, String> entry :
+                repositoryToCommit.entrySet()) {
+
+            String repositoryId = entry.getKey();
+            String commitId = entry.getValue();
+
+            GitRepositoryWrapper repository = null;
+
+            for (GitRepositoryWrapper candidate :
+                    multiRepositoryWrapper.getRepositories()) {
+
+                if (candidate.getWorkTree() != null
+                        && candidate.getWorkTree()
+                                .getName()
+                                .equals(repositoryId)) {
+
+                    repository = candidate;
+                    break;
+                }
+            }
+
+            if (repository == null) {
+                throw new IOException(
+                        "Repository not found: " + repositoryId);
+            }
+
+            LOGGER.info(
+                    "Propagating repository: " + repositoryId);
+            System.out.println(
+                    ">>> STARTING REPOSITORY: " + repositoryId
+                    + " | COMMIT: " + commitId);
+            System.out.println(
+                    "========================================");
+            System.out.println(
+                    "Repository: " + repositoryId);
+            System.out.println(
+                    "Commit: " + commitId);
+            System.out.println(
+                    "========================================");
+            LOGGER.info(
+                    "Target commit: " + commitId);
+
+         // Make this repository the active repository.
+            state.setGitRepositoryWrapper(repository);
+
+            PropagationTimingProvider timingProvider = null;
+
+            for (ChangePropagationSpecification spec :
+                    state.getCommitIntegration().getChangeSpecs()) {
+
+                if (spec instanceof PropagationTimingProvider) {
+                    timingProvider = (PropagationTimingProvider) spec;
+                    break;
+                }
+            }
+
+            if (timingProvider == null) {
+                throw new IllegalStateException(
+                        "No propagation timing provider found.");
+            }
+
+            timingProvider.clearPropagationTimings();
+
+            // Use the existing commit-based propagation pipeline.
+            Optional<Propagation> propagation =
+                    propagateChanges(null, commitId);
+            lastRepositoryPropagationTimings.put(
+                    repositoryId,
+                    timingProvider.getPropagationTimings()); 
+            
+            
+
+            if (propagation.isPresent()) {
+
+                long vsumPropagationTime =
+                        EvaluationDataContainer.get()
+                                .getExecutionTimes()
+                                .getChangePropagationTime();
+
+                long totalPropagationTime =
+                        EvaluationDataContainer.get()
+                                .getExecutionTimes()
+                                .getOverallTime();
+
+                long generateChangeTime =
+                        state.getVsumFacade()
+                                .getLastGenerateChangeTime();
+
+                long propagatedChangesTime =
+                        state.getVsumFacade()
+                                .getLastPropagatedChangesTime();
+
+                lastRepositoryPropagationTimes.put(
+                        repositoryId,
+                        new long[] {
+                                vsumPropagationTime,
+                                totalPropagationTime,
+                                generateChangeTime,
+                                propagatedChangesTime
+                        });
+
+            } else {
+
+                LOGGER.info(
+                        "No propagation performed for repository: "
+                        + repositoryId
+                        + " commit: "
+                        + commitId);
+
+                lastRepositoryPropagationTimes.put(
+                        repositoryId,
+                        new long[] {
+                                0L,
+                                0L,
+                                0L,
+                                0L
+                        });
+                lastRepositoryPropagationTimings.put(
+                        repositoryId,
+                        List.of());  
+            }
+
+            System.out.println(
+                    "Result for " + repositoryId + ": " + propagation);
+
+            results.add(propagation);
+        }
+
+        return results;
     }
 
     /**
@@ -287,7 +578,13 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         }
         return allPropagations;
     }
+    protected Optional<Propagation> propagateCurrentCheckout(
+            GitRepositoryWrapper repository) {
+        
+        state.setGitRepositoryWrapper(repository);
 
+        return propagateCurrentCheckout();
+    }
     /**
      * Propagates the current checkout for every repository managed by the commit integration
      * state. For each repository, the state's active {@link GitRepositoryWrapper} is switched to
@@ -302,30 +599,7 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
      * @return a list of {@link Propagation} results, one per repository, in the order the
      *         repositories were processed.
      */
-    public List<Optional<Propagation>> propagateAllRepositories() {
-
-        List<Optional<Propagation>> propagations = new ArrayList<>();
-
-        for (GitRepositoryWrapper repository : state.getGitRepositoryWrappers()) {
-
-            state.setGitRepositoryWrapper(repository);
-
-            LOGGER.info("Processing repository: "
-                    + repository.getRepository()
-                            .getDirectory()
-                            .getParentFile()
-                            .getName());
-
-            LOGGER.info("Repository: "
-                    + repository.getRepository()
-                            .getWorkTree()
-                            .getAbsolutePath());
-
-            propagations.add(propagateCurrentCheckout());
-        }
-
-        return propagations;
-    }
+    
 
     protected boolean prePropagationChecks(String firstCommitId, String secondCommitId) {
         if (firstCommitId != null) {
@@ -352,6 +626,8 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
             .getChangeStatistic();
         var totalChanges = 0;
 
+        long loopStart = System.nanoTime();
+
         for (var change : changes) {
             var changeCount = change.getOriginalChange()
                 .getEChanges()
@@ -364,6 +640,14 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
                 }
             }
         }
+
+        long loopEnd = System.nanoTime();
+
+        System.out.println(
+            "Evaluation Loop : "
+            + (loopEnd-loopStart)/1_000_000
+            + " ms");
+
         cs.setNumberVitruvChanges(totalChanges);
     }
 
@@ -404,9 +688,12 @@ public abstract class CommitIntegrationController<CM extends CodeModelFacade> {
         }
         return false;
     }
+    
 
     private CommitIntegrationFailureMode getFailureMode() {
         return state.getCommitIntegration()
             .getFailureMode();
     }
+    
+    
 }

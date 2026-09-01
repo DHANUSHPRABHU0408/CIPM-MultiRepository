@@ -8,6 +8,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+
+import org.eclipse.jgit.treewalk.TreeWalk;
 
 import org.apache.commons.io.FileUtils;
 import org.eclipse.jgit.api.Git;
@@ -542,6 +547,56 @@ public class GitRepositoryWrapper {
                 }
             }
         }
+    }
+    /**
+     * Counts the non-blank Java source lines contained in a specific commit.
+     *
+     * @param commitId
+     *            the commit to inspect
+     * @return number of non-blank Java source lines
+     * @throws IOException
+     *             if the commit or file contents cannot be read
+     */
+    public long getJavaSourceLineCount(String commitId)
+            throws IOException {
+
+        RevCommit commit = getCommitForId(commitId);
+
+        long totalLines = 0;
+
+        try (TreeWalk treeWalk = new TreeWalk(repository)) {
+
+            treeWalk.addTree(commit.getTree());
+            treeWalk.setRecursive(true);
+
+            while (treeWalk.next()) {
+
+                String path = treeWalk.getPathString();
+
+                if (!path.endsWith("." + sourceFileExt)) {
+                    continue;
+                }
+
+                ObjectId objectId = treeWalk.getObjectId(0);
+
+                try (BufferedReader reader =
+                        new BufferedReader(
+                                new InputStreamReader(
+                                        repository.open(objectId).openStream(),
+                                        StandardCharsets.UTF_8))) {
+
+                    String line;
+
+                    while ((line = reader.readLine()) != null) {
+                        if (!line.trim().isEmpty()) {
+                            totalLines++;
+                        }
+                    }
+                }
+            }
+        }
+
+        return totalLines;
     }
 
     public String getCurrentCommitHash() {
